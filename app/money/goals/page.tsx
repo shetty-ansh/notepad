@@ -88,6 +88,7 @@ export default function GoalsPage() {
           onOpenChange={setProvisionDialogOpen}
           goal={selectedGoal}
           accounts={accounts}
+          onSuccess={loadData}
         />
       )}
     </div>

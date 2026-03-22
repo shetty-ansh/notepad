@@ -57,9 +57,9 @@ export function GoalCard({ goal, onProvision }: GoalCardProps) {
 
       {/* Progress Bar */}
       <div className="mb-3">
-        <div className="h-1.5 bg-[--background-muted] rounded-full overflow-hidden">
+        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
           <div
-            className="h-full bg-[--accent] rounded-full transition-all"
+            className="h-full bg-[#1AB394] rounded-full transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>

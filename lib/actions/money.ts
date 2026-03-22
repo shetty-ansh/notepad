@@ -1,6 +1,8 @@
 'use server'
 
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   Account,
   Transaction,
@@ -14,17 +16,19 @@ import type {
   NewLedgerEntry,
   NewBill,
   NewReminder,
+  TransactionCategory,
+  NewTransactionCategory,
   TransactionFilters,
   GoalStatus,
   BillFrequency,
 } from '@/lib/types'
 
-async function getUserId(): Promise<string> {
+const getUserId = cache(async (): Promise<string> => {
   const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) throw new Error('Not authenticated')
   return user.id
-}
+})
 
 // ============================================================================
 // ACCOUNT OPERATIONS
@@ -56,6 +60,19 @@ export async function addAccount(accountData: NewAccount): Promise<Account> {
   return data
 }
 
+export async function deleteAccount(accountId: string): Promise<void> {
+  const supabase = await createClient()
+  const userId = await getUserId()
+  const { error } = await supabase
+    .from('accounts')
+    .delete()
+    .eq('id', accountId)
+    .eq('user_id', userId)
+
+  if (error) throw new Error(error.message)
+}
+
+
 export async function updateAccountBalance(id: string, newBalance: number): Promise<void> {
   const supabase = await createClient()
   const userId = await getUserId()
@@ -66,6 +83,23 @@ export async function updateAccountBalance(id: string, newBalance: number): Prom
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+  await resolveProvisionShortfall(id, userId, supabase)
+}
+
+export async function updateAccount(id: string, accountData: Partial<NewAccount & { color?: string | null }>): Promise<Account> {
+  const supabase = await createClient()
+  const userId = await getUserId()
+  const { data, error } = await supabase
+    .from('accounts')
+    .update(accountData)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+  await resolveProvisionShortfall(id, userId, supabase)
+  return data
 }
 
 // ============================================================================
@@ -103,7 +137,7 @@ export async function addTransaction(transactionData: NewTransaction): Promise<T
   let newBalance = account.balance ?? 0
   if (transactionData.type === 'income') {
     newBalance += transactionData.amount
-  } else if (transactionData.type === 'expense' || transactionData.type === 'provision') {
+  } else if (transactionData.type === 'expense') {
     newBalance -= transactionData.amount
   }
 
@@ -123,6 +157,24 @@ export async function addTransaction(transactionData: NewTransaction): Promise<T
 
   if (updateError) throw new Error(updateError.message)
 
+  if (transactionData.type === 'provision' && transactionData.goal_id) {
+    const { data: goal, error: fetchGoalError } = await supabase
+      .from('goals')
+      .select('saved_amount')
+      .eq('id', transactionData.goal_id)
+      .eq('user_id', userId)
+      .single()
+
+    if (!fetchGoalError && goal) {
+      await supabase
+        .from('goals')
+        .update({ saved_amount: (goal.saved_amount ?? 0) + transactionData.amount })
+        .eq('id', transactionData.goal_id)
+        .eq('user_id', userId)
+    }
+  }
+
+  await resolveProvisionShortfall(transactionData.account_id, userId, supabase)
   return transaction
 }
 
@@ -151,7 +203,7 @@ export async function deleteTransaction(id: string): Promise<void> {
   let newBalance = account.balance ?? 0
   if (transaction.type === 'income') {
     newBalance -= transaction.amount
-  } else if (transaction.type === 'expense' || transaction.type === 'provision') {
+  } else if (transaction.type === 'expense') {
     newBalance += transaction.amount
   }
 
@@ -170,6 +222,135 @@ export async function deleteTransaction(id: string): Promise<void> {
     .eq('user_id', userId)
 
   if (updateError) throw new Error(updateError.message)
+
+  if (transaction.type === 'provision' && transaction.goal_id) {
+    const { data: goal, error: fetchGoalError } = await supabase
+      .from('goals')
+      .select('saved_amount')
+      .eq('id', transaction.goal_id)
+      .eq('user_id', userId)
+      .single()
+
+    if (!fetchGoalError && goal) {
+      await supabase
+        .from('goals')
+        .update({ saved_amount: (goal.saved_amount ?? 0) - transaction.amount })
+        .eq('id', transaction.goal_id)
+        .eq('user_id', userId)
+    }
+  }
+
+  await resolveProvisionShortfall(transaction.account_id, userId, supabase)
+}
+
+export async function updateTransaction(id: string, updateData: Partial<NewTransaction>): Promise<Transaction> {
+  const supabase = await createClient()
+  const userId = await getUserId()
+
+  const { data: oldTx, error: matchError } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single()
+
+  if (matchError) throw new Error(matchError.message)
+
+  // To keep it clean, simply delete and re-add if balance-affecting fields changed
+  // However we shouldn't change the ID. 
+  // Let's do the math carefully here.
+
+  // Revert old values
+  if (oldTx.type === 'income' || oldTx.type === 'expense') {
+    const { data: acc } = await supabase.from('accounts').select('balance').eq('id', oldTx.account_id).single()
+    if (acc) {
+      const adjustment = oldTx.type === 'income' ? -oldTx.amount : oldTx.amount
+      await supabase.from('accounts').update({ balance: (acc.balance ?? 0) + adjustment }).eq('id', oldTx.account_id)
+    }
+  }
+
+  if (oldTx.type === 'provision' && oldTx.goal_id) {
+    const { data: goal } = await supabase.from('goals').select('saved_amount').eq('id', oldTx.goal_id).single()
+    if (goal) {
+      await supabase.from('goals').update({ saved_amount: (goal.saved_amount ?? 0) - oldTx.amount }).eq('id', oldTx.goal_id)
+    }
+  }
+
+  // Apply update
+  const { data: newTx, error: updateError } = await supabase
+    .from('transactions')
+    .update(updateData)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (updateError) throw new Error(updateError.message)
+
+  // Apply new values
+  if (newTx.type === 'income' || newTx.type === 'expense') {
+    const { data: acc } = await supabase.from('accounts').select('balance').eq('id', newTx.account_id).single()
+    if (acc) {
+      const adjustment = newTx.type === 'income' ? newTx.amount : -newTx.amount
+      await supabase.from('accounts').update({ balance: (acc.balance ?? 0) + adjustment }).eq('id', newTx.account_id)
+    }
+  }
+
+  if (newTx.type === 'provision' && newTx.goal_id) {
+    const { data: goal } = await supabase.from('goals').select('saved_amount').eq('id', newTx.goal_id).single()
+    if (goal) {
+      await supabase.from('goals').update({ saved_amount: (goal.saved_amount ?? 0) + newTx.amount }).eq('id', newTx.goal_id)
+    }
+  }
+
+  await resolveProvisionShortfall(oldTx.account_id, userId, supabase)
+  if (newTx.account_id !== oldTx.account_id) {
+    await resolveProvisionShortfall(newTx.account_id, userId, supabase)
+  }
+
+  return newTx
+}
+
+// ============================================================================
+// TRANSACTION CATEGORY OPERATIONS
+// ============================================================================
+
+export async function getTransactionCategories(): Promise<TransactionCategory[]> {
+  const supabase = await createClient()
+  const userId = await getUserId()
+  const { data, error } = await supabase
+    .from('transaction_categories')
+    .select('*')
+    .eq('user_id', userId)
+    .order('name', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return data
+}
+
+export async function addTransactionCategory(categoryData: NewTransactionCategory): Promise<TransactionCategory> {
+  const supabase = await createClient()
+  const userId = await getUserId()
+  const { data, error } = await supabase
+    .from('transaction_categories')
+    .insert({ ...categoryData, user_id: userId })
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+  return data
+}
+
+export async function deleteTransactionCategory(id: string): Promise<void> {
+  const supabase = await createClient()
+  const userId = await getUserId()
+  const { error } = await supabase
+    .from('transaction_categories')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId)
+
+  if (error) throw new Error(error.message)
 }
 
 // ============================================================================
@@ -205,6 +386,23 @@ export async function provisionToGoal(goalId: string, amount: number, accountId:
   const supabase = await createClient()
   const userId = await getUserId()
 
+  const { data: account } = await supabase.from('accounts').select('balance').eq('id', accountId).eq('user_id', userId).single()
+  if (!account) throw new Error('Account not found')
+
+  const { data: provisions } = await supabase
+    .from('transactions')
+    .select('amount')
+    .eq('account_id', accountId)
+    .eq('user_id', userId)
+    .eq('type', 'provision')
+
+  const totalProvisioned = (provisions || []).reduce((sum, p) => sum + (p.amount || 0), 0)
+  const freeMoney = (account.balance || 0) - totalProvisioned
+
+  if (amount > freeMoney) {
+    throw new Error(`Cannot provision more than available free money (₹${freeMoney.toLocaleString('en-IN')})`)
+  }
+
   const { error: transactionError } = await supabase
     .from('transactions')
     .insert({
@@ -220,22 +418,23 @@ export async function provisionToGoal(goalId: string, amount: number, accountId:
 
   if (transactionError) throw new Error(transactionError.message)
 
-  const { data: account, error: accountError } = await supabase
-    .from('accounts')
-    .select('balance')
-    .eq('id', accountId)
-    .eq('user_id', userId)
-    .single()
-
-  if (accountError) throw new Error(accountError.message)
-
-  const { error: updateAccountError } = await supabase
-    .from('accounts')
-    .update({ balance: (account.balance ?? 0) - amount })
-    .eq('id', accountId)
-    .eq('user_id', userId)
-
-  if (updateAccountError) throw new Error(updateAccountError.message)
+  // Provisioning no longer updates account balance based on user requirements.
+  // const { data: account, error: accountError } = await supabase
+  //   .from('accounts')
+  //   .select('balance')
+  //   .eq('id', accountId)
+  //   .eq('user_id', userId)
+  //   .single()
+  //
+  // if (accountError) throw new Error(accountError.message)
+  //
+  // const { error: updateAccountError } = await supabase
+  //   .from('accounts')
+  //   .update({ balance: (account.balance ?? 0) - amount })
+  //   .eq('id', accountId)
+  //   .eq('user_id', userId)
+  //
+  // if (updateAccountError) throw new Error(updateAccountError.message)
 
   const { data: goal, error: goalError } = await supabase
     .from('goals')
@@ -464,3 +663,58 @@ export async function markReminderDone(id: string): Promise<void> {
 
   if (error) throw new Error(error.message)
 }
+
+// ============================================================================
+// HELPER FOR SHORTFALLS
+// ============================================================================
+
+async function resolveProvisionShortfall(accountId: string | null, userId: string, supabase: SupabaseClient): Promise<void> {
+  if (!accountId) return
+  const { data: account } = await supabase.from('accounts').select('balance').eq('id', accountId).eq('user_id', userId).single()
+  if (!account) return
+
+  const currentBalance = account.balance || 0
+
+  const { data: provisions } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('account_id', accountId)
+    .eq('user_id', userId)
+    .eq('type', 'provision')
+    .order('created_at', { ascending: false })
+
+  if (!provisions || provisions.length === 0) return
+
+  const totalProvisioned = provisions.reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+
+  if (currentBalance >= totalProvisioned) return
+
+  let shortfall = totalProvisioned - currentBalance
+
+  for (const prov of provisions) {
+    if (shortfall <= 0) break
+
+    const currentProvAmount = prov.amount || 0
+    if (currentProvAmount <= 0) continue
+
+    const deduction = Math.min(shortfall, currentProvAmount)
+    const newProvAmount = currentProvAmount - deduction
+
+    if (newProvAmount <= 0) {
+      await supabase.from('transactions').delete().eq('id', prov.id).eq('user_id', userId)
+    } else {
+      await supabase.from('transactions').update({ amount: newProvAmount }).eq('id', prov.id).eq('user_id', userId)
+    }
+
+    if (prov.goal_id) {
+      const { data: goal } = await supabase.from('goals').select('saved_amount').eq('id', prov.goal_id).eq('user_id', userId).single()
+      if (goal) {
+        const newGoalSavedAmount = Math.max(0, (goal.saved_amount || 0) - deduction)
+        await supabase.from('goals').update({ saved_amount: newGoalSavedAmount }).eq('id', prov.goal_id).eq('user_id', userId)
+      }
+    }
+
+    shortfall -= deduction
+  }
+}
+

@@ -19,16 +19,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { addTransaction } from '@/lib/actions/money'
+import { addTransaction, updateTransaction } from '@/lib/actions/money'
 import { toast } from 'sonner'
 import { CustomToast } from '@/components/toastMessage'
-import type { NewTransaction, Account, Goal, TransactionType } from '@/lib/types'
+import type { NewTransaction, Transaction, Account, Goal, TransactionType, TransactionCategory } from '@/lib/types'
+import { CreateCategoryDialog } from '@/components/money/create-category-dialog'
+import { AddGoalDialog } from '@/components/money/add-goal-dialog'
+import * as LucideIcons from 'lucide-react'
 
 interface AddTransactionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   accounts: Account[]
   goals?: Goal[]
+  categories?: TransactionCategory[]
+  onCategoryAdded?: () => void
+  existingTransaction?: Transaction | null
+  onSuccess?: () => void
 }
 
 export function AddTransactionDialog({
@@ -36,18 +43,50 @@ export function AddTransactionDialog({
   onOpenChange,
   accounts,
   goals = [],
+  categories = [],
+  onCategoryAdded,
+  existingTransaction,
+  onSuccess,
 }: AddTransactionDialogProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false)
+  const [showGoalDialog, setShowGoalDialog] = useState(false)
   const [formData, setFormData] = useState<NewTransaction>({
     account_id: '',
     goal_id: null,
     amount: 0,
-    type: 'expense',
-    category: '',
-    description: '',
-    txn_date: new Date().toISOString().split('T')[0],
+    type: existingTransaction?.type || 'expense',
+    category: existingTransaction?.category || '',
+    description: existingTransaction?.description || '',
+    txn_date: existingTransaction?.txn_date || new Date().toISOString().split('T')[0],
   })
+
+  useEffect(() => {
+    if (open) {
+      if (existingTransaction) {
+        setFormData({
+          account_id: existingTransaction.account_id,
+          goal_id: existingTransaction.goal_id,
+          amount: existingTransaction.amount,
+          type: existingTransaction.type,
+          category: existingTransaction.category,
+          description: existingTransaction.description,
+          txn_date: existingTransaction.txn_date || new Date().toISOString().split('T')[0],
+        })
+      } else {
+        setFormData({
+          account_id: accounts[0]?.id || '',
+          goal_id: null,
+          amount: 0,
+          type: 'expense',
+          category: '',
+          description: '',
+          txn_date: new Date().toISOString().split('T')[0],
+        })
+      }
+    }
+  }, [open, existingTransaction, accounts])
 
   useEffect(() => {
     if (accounts.length > 0 && !formData.account_id) {
@@ -59,10 +98,23 @@ export function AddTransactionDialog({
     e.preventDefault()
     setLoading(true)
     try {
-      await addTransaction(formData)
-      toast.custom(() => (
-        <CustomToast type="success" title="Transaction added" message="Your transaction has been recorded." />
-      ))
+      const dataToSubmit = { ...formData }
+      if (dataToSubmit.type === 'provision') {
+        dataToSubmit.category = 'Provision'
+      }
+
+      if (existingTransaction) {
+        await updateTransaction(existingTransaction.id, dataToSubmit)
+        toast.custom(() => (
+          <CustomToast type="success" title="Transaction updated" message="Your transaction has been updated." />
+        ))
+      } else {
+        await addTransaction(dataToSubmit)
+        toast.custom(() => (
+          <CustomToast type="success" title="Transaction added" message="Your transaction has been recorded." />
+        ))
+      }
+      onSuccess?.()
       onOpenChange(false)
       setFormData({
         account_id: accounts[0]?.id || '',
@@ -91,7 +143,7 @@ export function AddTransactionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-[#FCF9F5] border border-[--border] rounded-[12px] shadow-md p-6 max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base font-medium">Add Transaction</DialogTitle>
+          <DialogTitle className="text-base font-medium">{existingTransaction ? 'Edit Transaction' : 'Add Transaction'}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -148,15 +200,41 @@ export function AddTransactionDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex-1">
-              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Category</Label>
-              <Input
-                value={formData.category || ''}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="bg-white border-[--border] focus:border-[--border-strong] h-9 text-sm rounded-[8px]"
-                required
-              />
-            </div>
+            {formData.type !== 'provision' && (
+              <div className="flex-1">
+                <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Category</Label>
+                <Select
+                  value={formData.category || ''}
+                  onValueChange={(value) => {
+                    if (value === '__create_new__') {
+                      setShowCategoryDialog(true)
+                    } else {
+                      setFormData({ ...formData, category: value })
+                    }
+                  }}
+                >
+                  <SelectTrigger className="bg-white border-[--border] h-9 text-sm rounded-[8px]">
+                    <SelectValue placeholder="Select or create..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => {
+                      const IconComp = (LucideIcons as any)[cat.icon || 'Tag'] || LucideIcons.Tag
+                      return (
+                        <SelectItem key={cat.name} value={cat.name}>
+                          <div className="flex items-center gap-2">
+                            <IconComp className="w-4 h-4" style={{ color: cat.color || 'inherit' }} />
+                            {cat.name}
+                          </div>
+                        </SelectItem>
+                      )
+                    })}
+                    <SelectItem value="__create_new__" className="font-semibold text-blue-600">
+                      + Create new category
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div>
@@ -178,20 +256,29 @@ export function AddTransactionDialog({
             </Select>
           </div>
 
-          {formData.type === 'provision' && goals.length > 0 && (
+          {formData.type === 'provision' && (
             <div>
               <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Goal</Label>
               <Select
                 value={formData.goal_id || ''}
-                onValueChange={(value) => setFormData({ ...formData, goal_id: value || null })}
+                onValueChange={(value) => {
+                  if (value === '__create_new__') {
+                    setShowGoalDialog(true)
+                  } else {
+                    setFormData({ ...formData, goal_id: value || null })
+                  }
+                }}
               >
                 <SelectTrigger className="bg-white border-[--border] h-9 text-sm rounded-[8px]">
-                  <SelectValue placeholder="Select a goal" />
+                  <SelectValue placeholder="Select or create a goal..." />
                 </SelectTrigger>
                 <SelectContent>
                   {goals.map((goal) => (
                     <SelectItem key={goal.id} value={goal.id}>{goal.name}</SelectItem>
                   ))}
+                  <SelectItem value="__create_new__" className="font-semibold text-blue-600">
+                    + Create new goal
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -211,11 +298,23 @@ export function AddTransactionDialog({
               disabled={loading}
               className="bg-black text-white hover:bg-green-900 h-8 px-3 text-sm font-medium rounded-[8px] shadow-none"
             >
-              {loading ? 'Adding...' : 'Add Transaction'}
+              {loading ? (existingTransaction ? 'Updating...' : 'Adding...') : (existingTransaction ? 'Update Transaction' : 'Add Transaction')}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
+      <CreateCategoryDialog
+        open={showCategoryDialog}
+        onOpenChange={setShowCategoryDialog}
+        onSuccess={() => {
+          if (onCategoryAdded) onCategoryAdded()
+        }}
+      />
+      <AddGoalDialog
+        open={showGoalDialog}
+        onOpenChange={setShowGoalDialog}
+        accounts={accounts}
+      />
     </Dialog>
   )
 }

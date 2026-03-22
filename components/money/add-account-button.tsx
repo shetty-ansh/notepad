@@ -7,9 +7,10 @@ import { Plus } from 'lucide-react'
 
 interface AddAccountButtonProps {
   className?: string
+  onSuccess?: () => void
 }
 
-export function AddAccountButton({ className }: AddAccountButtonProps) {
+export function AddAccountButton({ className, onSuccess }: AddAccountButtonProps) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -21,7 +22,7 @@ export function AddAccountButton({ className }: AddAccountButtonProps) {
         <Plus className="w-4 h-4 mr-1.5" />
         Add Account
       </Button>
-      <AddAccountDialog open={open} onOpenChange={setOpen} />
+      <AddAccountDialog open={open} onOpenChange={setOpen} onSuccess={onSuccess} />
     </>
   )
 }

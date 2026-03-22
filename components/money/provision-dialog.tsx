@@ -29,9 +29,10 @@ interface ProvisionDialogProps {
   onOpenChange: (open: boolean) => void
   goal: Goal
   accounts: Account[]
+  onSuccess?: () => void
 }
 
-export function ProvisionDialog({ open, onOpenChange, goal, accounts }: ProvisionDialogProps) {
+export function ProvisionDialog({ open, onOpenChange, goal, accounts, onSuccess }: ProvisionDialogProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [amount, setAmount] = useState(0)
@@ -47,6 +48,7 @@ export function ProvisionDialog({ open, onOpenChange, goal, accounts }: Provisio
       ))
       onOpenChange(false)
       setAmount(0)
+      onSuccess?.()
       router.refresh()
     } catch (error) {
       toast.custom(() => (

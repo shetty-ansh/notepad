@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getAccounts, getTransactions, getGoals } from '@/lib/actions/money'
+import { getAccounts, getTransactions, getGoals, getTransactionCategories } from '@/lib/actions/money'
 import { TransactionRow } from '@/components/money/transaction-row'
 import { AddTransactionDialog } from '@/components/money/add-transaction-dialog'
 import { Button } from '@/components/ui/button'
@@ -13,12 +13,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Plus } from 'lucide-react'
-import type { Account, Transaction, Goal, TransactionType } from '@/lib/types'
+import type { Account, Transaction, Goal, TransactionType, TransactionCategory } from '@/lib/types'
 
 export default function TransactionsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [goals, setGoals] = useState<Goal[]>([])
+  const [categories, setCategories] = useState<TransactionCategory[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [typeFilter, setTypeFilter] = useState<TransactionType | 'all'>('all')
   const [accountFilter, setAccountFilter] = useState<string>('all')
@@ -28,12 +29,14 @@ export default function TransactionsPage() {
   }, [typeFilter, accountFilter])
 
   const loadData = async () => {
-    const [accountsData, goalsData] = await Promise.all([
+    const [accountsData, goalsData, categoriesData] = await Promise.all([
       getAccounts(),
       getGoals(),
+      getTransactionCategories(),
     ])
     setAccounts(accountsData)
     setGoals(goalsData)
+    setCategories(categoriesData)
 
     const filters: { accountId?: string; type?: TransactionType } = {}
     if (accountFilter !== 'all') filters.accountId = accountFilter
@@ -143,7 +146,7 @@ export default function TransactionsPage() {
                 <h3 className="text-xs font-medium text-[--text-secondary] mb-2">
                   {date}
                 </h3>
-                <div className="bg-[--card] border border-[--border] rounded-[--radius-lg] p-4">
+                <div>
                   {txns.map((transaction) => {
                     const account = accounts.find(
                       (acc) => acc.id === transaction.account_id
@@ -153,6 +156,7 @@ export default function TransactionsPage() {
                         key={transaction.id}
                         transaction={transaction}
                         account={account}
+                        colour={categories.find(c => c.name === transaction.category)?.color || '#64748B'}
                       />
                     )
                   })}
@@ -168,6 +172,8 @@ export default function TransactionsPage() {
         onOpenChange={setDialogOpen}
         accounts={accounts}
         goals={goals}
+        categories={categories}
+        onCategoryAdded={loadData}
       />
     </div>
   )

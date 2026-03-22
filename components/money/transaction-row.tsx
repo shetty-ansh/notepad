@@ -1,23 +1,17 @@
+import { deleteTransaction } from '@/lib/actions/money'
 import type { Transaction, Account } from '@/lib/types'
+import { Pencil, Trash2 } from 'lucide-react'
 
 interface TransactionRowProps {
   transaction: Transaction
   account?: Account
+  colour: string
+  icon?: string
+  onEdit?: (transaction: Transaction) => void
+  onDelete?: () => void
 }
 
-export function TransactionRow({ transaction, account }: TransactionRowProps) {
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'income':
-        return 'text-[--success]'
-      case 'expense':
-        return 'text-[--danger]'
-      case 'provision':
-        return 'text-[--accent]'
-      default:
-        return 'text-[--text-primary]'
-    }
-  }
+export function TransactionRow({ transaction, account, colour, icon, onEdit, onDelete }: TransactionRowProps) {
 
   const getTypeSymbol = (type: string) => {
     switch (type) {
@@ -31,35 +25,29 @@ export function TransactionRow({ transaction, account }: TransactionRowProps) {
   }
 
   return (
-    <div className="flex items-center justify-between py-3 border-b border-[--border] last:border-0 hover:bg-[--card-hover] -mx-4 px-4 transition-colors">
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <div
-            className={`w-2 h-2 rounded-full ${
-              transaction.type === 'income'
-                ? 'bg-[--success]'
-                : transaction.type === 'expense'
-                  ? 'bg-[--danger]'
-                  : transaction.type === 'provision'
-                    ? 'bg-[--accent]'
-                    : 'bg-[--text-tertiary]'
-            }`}
-          />
-          <p className="text-sm font-medium text-[--text-primary]">
+    <div
+      className={`flex items-center justify-between py-3 rounded-[12px] mt-2 hover:bg-[--card-hover] px-4 transition-colors`}
+      style={{ backgroundColor: colour ? `${colour}15` : undefined }}
+    >
+      <div className="flex items-center gap-4 flex-1">
+
+        <div>
+          <p className="font-bold text-black">
             {transaction.description}
           </p>
-        </div>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-[--radius-sm] text-[11px] font-medium bg-[--background-muted] text-[--text-secondary]">
-            {transaction.category}
-          </span>
-          <span className="text-xs text-[--text-secondary] font-mono">
-            {transaction.txn_date}
-          </span>
+          <div className="flex flex-col items-start gap-3 mt-3">
+            <span className="text-xs text-black border border-black rounded-full px-2 py-1">
+              {transaction.category}
+            </span>
+            <span className="text-xs text-black">
+              {transaction.txn_date}
+            </span>
+
+          </div>
         </div>
       </div>
       <div className="text-right">
-        <p className={`text-sm font-mono font-medium ${getTypeColor(transaction.type || '')}`}>
+        <p className={`text-sm font-mono font-medium`}>
           {getTypeSymbol(transaction.type || '')}₹
           {(transaction.amount || 0).toLocaleString('en-IN', {
             minimumFractionDigits: 2,
@@ -71,6 +59,19 @@ export function TransactionRow({ transaction, account }: TransactionRowProps) {
             {account.name}
           </p>
         )}
+      </div>
+      <div className="flex items-center justify-center rounded-full p-1.5 ml-2 border border-white bg-white text-black hover:bg-black hover:text-white transition-colors">
+        <button onClick={() => onEdit?.(transaction)}>
+          <Pencil size={14} />
+        </button>
+      </div>
+      <div className="flex items-center justify-center rounded-full p-1.5 ml-2 border border-red-200 bg-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors">
+        <button onClick={async () => {
+          await deleteTransaction(transaction.id)
+          onDelete?.()
+        }}>
+          <Trash2 size={14} />
+        </button>
       </div>
     </div>
   )
