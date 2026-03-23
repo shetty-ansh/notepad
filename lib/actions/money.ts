@@ -64,6 +64,39 @@ export async function deleteAccount(accountId: string): Promise<void> {
   const supabase = await createClient()
   const userId = await getUserId()
 
+  // 1. Find all goals that belong to this account and clean them up
+  const { data: accountGoals } = await supabase
+    .from('goals')
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('user_id', userId)
+
+  if (accountGoals && accountGoals.length > 0) {
+    const goalIds = accountGoals.map(g => g.id)
+    // Delete all provisions targeting these goals (from any account)
+    await supabase
+      .from('transactions')
+      .delete()
+      .in('goal_id', goalIds)
+      .eq('type', 'provision')
+      .eq('user_id', userId)
+    
+    // Delete the goals themselves
+    await supabase
+      .from('goals')
+      .delete()
+      .in('id', goalIds)
+      .eq('user_id', userId)
+  }
+
+  // 2. Delete all bills associated with this account
+  await supabase
+    .from('bills')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('user_id', userId)
+
+  // 3. Revert provisions targeting other accounts' goals, and delete all transactions
   const { data: transactions } = await supabase
     .from('transactions')
     .select('*')
@@ -97,6 +130,7 @@ export async function deleteAccount(accountId: string): Promise<void> {
       .eq('user_id', userId)
   }
 
+  // 4. Finally, delete the account
   const { error } = await supabase
     .from('accounts')
     .delete()
@@ -518,6 +552,15 @@ export async function updateGoalStatus(id: string, status: GoalStatus): Promise<
 export async function deleteGoal(id: string): Promise<void> {
   const supabase = await createClient()
   const userId = await getUserId()
+
+  // First delete associated provision transactions
+  await supabase
+    .from('transactions')
+    .delete()
+    .eq('goal_id', id)
+    .eq('type', 'provision')
+    .eq('user_id', userId)
+
   const { error } = await supabase
     .from('goals')
     .delete()

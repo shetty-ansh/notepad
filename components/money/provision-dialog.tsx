@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Dialog,
@@ -27,24 +27,39 @@ import type { Account, Goal } from '@/lib/types'
 interface ProvisionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  goal: Goal
+  goal: Goal | null
   accounts: Account[]
+  goals?: Goal[]
   onSuccess?: () => void
 }
 
-export function ProvisionDialog({ open, onOpenChange, goal, accounts, onSuccess }: ProvisionDialogProps) {
+export function ProvisionDialog({ open, onOpenChange, goal, accounts, goals, onSuccess }: ProvisionDialogProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [amount, setAmount] = useState(0)
   const [accountId, setAccountId] = useState(accounts[0]?.id || '')
+  const [goalId, setGoalId] = useState(goal?.id || '')
+
+  useEffect(() => {
+    if (goal) {
+      setGoalId(goal.id)
+    } else if (goals && goals.length > 0 && !goalId) {
+      setGoalId(goals[0].id)
+    }
+    if (accounts.length > 0 && !accountId) {
+      setAccountId(accounts[0].id)
+    }
+  }, [goal, goals, accounts, open])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await provisionToGoal(goal.id, amount, accountId)
+      if (!goalId) throw new Error("Please select a goal")
+      await provisionToGoal(goalId, amount, accountId)
+      const targetName = goal?.name || goals?.find(g => g.id === goalId)?.name || 'Goal'
       toast.custom(() => (
-        <CustomToast type="success" title="Money added" message={`₹${amount.toLocaleString('en-IN')} added to ${goal.name}.`} />
+        <CustomToast type="success" title="Money added" message={`₹${amount.toLocaleString('en-IN')} added to ${targetName}.`} />
       ))
       onOpenChange(false)
       setAmount(0)
@@ -68,11 +83,29 @@ export function ProvisionDialog({ open, onOpenChange, goal, accounts, onSuccess 
       <DialogContent className="bg-[#FCF9F5] border border-[--border] rounded-[12px] shadow-md p-6 max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base font-medium">
-            Add Money to {goal.name}
+            {goal ? `Add Money to ${goal.name}` : 'Provision Money to Goal'}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!goal && goals && goals.length > 0 && (
+            <div>
+              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Target Goal</Label>
+              <Select value={goalId} onValueChange={setGoalId}>
+                <SelectTrigger className="bg-white border-[--border] h-9 text-sm rounded-[8px]">
+                  <SelectValue placeholder="Select a goal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {goals.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div>
             <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Amount</Label>
             <Input

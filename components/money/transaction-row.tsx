@@ -1,6 +1,10 @@
+'use client'
+
+import { useState } from 'react'
 import { deleteTransaction } from '@/lib/actions/money'
 import type { Transaction, Account } from '@/lib/types'
 import { Pencil, Trash2 } from 'lucide-react'
+import { formatText, formatDate } from '@/lib/utils'
 
 interface TransactionRowProps {
   transaction: Transaction
@@ -12,6 +16,7 @@ interface TransactionRowProps {
 }
 
 export function TransactionRow({ transaction, account, colour, icon, onEdit, onDelete }: TransactionRowProps) {
+  const [expanded, setExpanded] = useState(false)
 
   const getTypeSymbol = (type: string) => {
     switch (type) {
@@ -26,53 +31,89 @@ export function TransactionRow({ transaction, account, colour, icon, onEdit, onD
 
   return (
     <div
-      className={`flex items-center justify-between py-3 rounded-[12px] mt-2 hover:bg-[--card-hover] px-4 transition-colors`}
-      style={{ backgroundColor: colour ? `${colour}15` : undefined }}
+      className="rounded-[12px] mt-2 transition-all cursor-pointer"
+      style={{ backgroundColor: colour ? `${colour}10` : undefined }}
+      onClick={() => setExpanded(prev => !prev)}
     >
-      <div className="flex items-center gap-4 flex-1">
-
-        <div>
-          <p className="font-bold text-black">
-            {transaction.description}
+      {/* Collapsed row */}
+      <div className="flex items-center justify-between py-4 px-5">
+        <div className="flex-1 min-w-0">
+          <p className="text-lg md:text-3xl font-black text-black tracking-tight truncate">
+            {formatText(transaction.description || '')}
           </p>
-          <div className="flex flex-col items-start gap-3 mt-3">
-            <span className="text-xs text-black border border-black rounded-full px-2 py-1">
-              {transaction.category}
-            </span>
-            <span className="text-xs text-black">
-              {transaction.txn_date}
-            </span>
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            {transaction.txn_date ? formatDate(transaction.txn_date) : ''}
+          </span>
+        </div>
 
-          </div>
+        <div className="text-right flex-shrink-0 ml-4">
+          <p className={`text-base md:text-2xl font-mono font-bold ${transaction.type === 'income' ? 'text-green-600' : 'text-black'}`}>
+            {getTypeSymbol(transaction.type || '')}₹
+            {(transaction.amount || 0).toLocaleString('en-IN', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            })}
+          </p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mt-0.5">
+            {transaction.category}{account ? ` · ${account.name}` : ''}
+          </p>
         </div>
       </div>
-      <div className="text-right">
-        <p className={`text-sm font-mono font-medium`}>
-          {getTypeSymbol(transaction.type || '')}₹
-          {(transaction.amount || 0).toLocaleString('en-IN', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
-        </p>
-        {account && (
-          <p className="text-xs text-[--text-secondary] mt-0.5">
-            {account.name}
-          </p>
-        )}
-      </div>
-      <div className="flex items-center justify-center rounded-full p-1.5 ml-2 border border-white bg-white text-black hover:bg-black hover:text-white transition-colors">
-        <button onClick={() => onEdit?.(transaction)}>
-          <Pencil size={14} />
-        </button>
-      </div>
-      <div className="flex items-center justify-center rounded-full p-1.5 ml-2 border border-red-200 bg-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors">
-        <button onClick={async () => {
-          await deleteTransaction(transaction.id)
-          onDelete?.()
-        }}>
-          <Trash2 size={14} />
-        </button>
-      </div>
+
+      {/* Expanded details */}
+      {expanded && (
+        <div
+          className="px-5 pb-4 pt-0 border-t flex items-center justify-between"
+          style={{ borderColor: colour ? `${colour}30` : '#e5e7eb' }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="flex flex-wrap gap-2 py-3">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-black bg-white px-2.5 py-1 rounded-[6px]">
+              {transaction.type}
+            </span>
+            {transaction.category && (
+              <span
+                className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-[6px]"
+                style={{ color: colour, backgroundColor: `${colour}15`, border: `1px solid ${colour}30` }}
+              >
+                {transaction.category}
+              </span>
+            )}
+            {account && (
+              <span className="text-[10px] font-bold uppercase tracking-widest text-black bg-white px-2.5 py-1 rounded-[6px]">
+                {account.name}
+              </span>
+            )}
+            {transaction.txn_date && (
+              <span className="text-[10px] font-bold uppercase tracking-widest text-black bg-white px-2.5 py-1 rounded-[6px]">
+                {formatDate(transaction.txn_date)}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 flex-shrink-0 ml-4">
+            {onEdit && (
+              <button
+                onClick={() => onEdit(transaction)}
+                className="flex items-center p-2 rounded-full text-md font-bold text-black hover:bg-black hover:text-white"
+              >
+                <Pencil size={12} />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={async () => {
+                  await deleteTransaction(transaction.id)
+                  onDelete()
+                }}
+                className="flex items-center p-2 rounded-full text-md font-bold text-red-600 hover:bg-red-600 hover:text-white"
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

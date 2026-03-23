@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { addTransaction, updateTransaction } from '@/lib/actions/money'
+import { addTransaction, updateTransaction, getGoals } from '@/lib/actions/money'
 import { toast } from 'sonner'
 import { CustomToast } from '@/components/toastMessage'
 import type { NewTransaction, Transaction, Account, Goal, TransactionType, TransactionCategory } from '@/lib/types'
@@ -52,6 +52,7 @@ export function AddTransactionDialog({
   const [loading, setLoading] = useState(false)
   const [showCategoryDialog, setShowCategoryDialog] = useState(false)
   const [showGoalDialog, setShowGoalDialog] = useState(false)
+  const [localGoals, setLocalGoals] = useState<Goal[]>(goals)
   const [formData, setFormData] = useState<NewTransaction>({
     account_id: '',
     goal_id: null,
@@ -61,6 +62,11 @@ export function AddTransactionDialog({
     description: existingTransaction?.description || '',
     txn_date: existingTransaction?.txn_date || new Date().toISOString().split('T')[0],
   })
+
+  // Sync localGoals when parent goals prop changes
+  useEffect(() => {
+    setLocalGoals(goals)
+  }, [goals])
 
   useEffect(() => {
     if (open) {
@@ -273,7 +279,7 @@ export function AddTransactionDialog({
                   <SelectValue placeholder="Select or create a goal..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {goals.map((goal) => (
+                  {localGoals.map((goal) => (
                     <SelectItem key={goal.id} value={goal.id}>{goal.name}</SelectItem>
                   ))}
                   <SelectItem value="__create_new__" className="font-semibold text-blue-600">
@@ -314,6 +320,11 @@ export function AddTransactionDialog({
         open={showGoalDialog}
         onOpenChange={setShowGoalDialog}
         accounts={accounts}
+        onSuccess={async (newGoal) => {
+          const freshGoals = await getGoals()
+          setLocalGoals(freshGoals)
+          setFormData(prev => ({ ...prev, goal_id: newGoal.id }))
+        }}
       />
     </Dialog>
   )

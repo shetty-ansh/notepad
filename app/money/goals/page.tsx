@@ -128,15 +128,17 @@ export default function GoalsPage() {
         onSuccess={handleSuccess}
       />
 
-      {selectedGoal && (
-        <ProvisionDialog
-          open={provisionDialogOpen}
-          onOpenChange={setProvisionDialogOpen}
-          goal={selectedGoal}
-          accounts={accounts}
-          onSuccess={loadData}
-        />
-      )}
+      <ProvisionDialog
+        open={provisionDialogOpen}
+        onOpenChange={(open) => {
+          setProvisionDialogOpen(open)
+          if (!open) setTimeout(() => setSelectedGoal(null), 200)
+        }}
+        goal={selectedGoal}
+        accounts={accounts}
+        goals={goals}
+        onSuccess={loadData}
+      />
     </div>
   )
 }

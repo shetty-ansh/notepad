@@ -19,13 +19,13 @@ import { AddAccountButton } from '@/components/money/add-account-button'
 import { TransactionRow } from '@/components/money/transaction-row'
 import { GoalCard } from '@/components/money/goal-card'
 import { ProvisionDialog } from '@/components/money/provision-dialog'
-import { AccountDetailsDialog } from '@/components/money/account-details-dialog'
 import { AddTransactionDialog } from '@/components/money/add-transaction-dialog'
 import { LedgerRow } from '@/components/money/ledger-row'
 import { AddLedgerDialog } from '@/components/money/add-ledger-dialog'
 import { AddGoalDialog } from '@/components/money/add-goal-dialog'
 import { AddBillDialog } from '@/components/money/add-bill-dialog'
 import { BillRow } from '@/components/money/bill-row'
+import { MoneyCalendar } from '@/components/money/money-calendar'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import type { Account, Transaction, Goal, Ledger, Bill, TransactionCategory } from '@/lib/types'
@@ -39,7 +39,6 @@ export default function MoneyOverviewPage() {
   const [categories, setCategories] = useState<TransactionCategory[]>([])
   const [provisionDialogOpen, setProvisionDialogOpen] = useState(false)
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
-  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
   const [addTransactionOpen, setAddTransactionOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [ledgerDialogOpen, setLedgerDialogOpen] = useState(false)
@@ -77,8 +76,8 @@ export default function MoneyOverviewPage() {
     setCategories(categoriesData)
   }
 
-  const handleProvision = (goal: Goal) => {
-    setSelectedGoal(goal)
+  const handleProvision = (goal?: Goal | null) => {
+    setSelectedGoal(goal || null)
     setProvisionDialogOpen(true)
   }
 
@@ -216,8 +215,8 @@ export default function MoneyOverviewPage() {
           </p>
           <p className="mt-1 text-2xl font-semibold font-mono text-[--success]">
             ₹{totalIn.toLocaleString('en-IN', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
             })}
           </p>
         </div>
@@ -228,8 +227,8 @@ export default function MoneyOverviewPage() {
           </p>
           <p className="mt-1 text-2xl font-semibold font-mono text-[--danger]">
             ₹{totalOut.toLocaleString('en-IN', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
             })}
           </p>
         </div>
@@ -243,8 +242,8 @@ export default function MoneyOverviewPage() {
               }`}
           >
             {net >= 0 ? '+' : ''}₹{Math.abs(net).toLocaleString('en-IN', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
             })}
           </p>
         </div>
@@ -270,13 +269,39 @@ export default function MoneyOverviewPage() {
             <AddAccountButton className="mt-4 bg-black" onSuccess={loadData} />
           </div>
         ) : (
-          <div className="flex gap-4 overflow-x-auto pb-2 transition-transform duration-300 hover:scale-102">
+          <div className="flex flex-col gap-4">
             {accounts.map((account) => (
-              <AccountCard key={account.id} account={account} goals={goals} transactions={transactions} className="min-w-[250px] w-64 h-36 transition-transform duration-300 hover:scale-102 hover:shadow-md" onSelect={() => setSelectedAccount(account)} />
+              <AccountCard
+                key={account.id}
+                account={account}
+                goals={goals}
+                transactions={transactions}
+                categories={categories}
+                className="transition-all duration-300"
+                onProvision={handleProvision}
+                onEditTransaction={(tx: Transaction) => {
+                  setEditingTransaction(tx)
+                  setAddTransactionOpen(true)
+                }}
+                onDeleteTransaction={loadData}
+                onUpdate={loadData}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* Transaction Calendar */}
+      {transactions.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[11px] font-medium uppercase tracking-wider text-[--text-secondary]">
+              Transaction Calendar
+            </h2>
+          </div>
+          <MoneyCalendar transactions={transactions} accounts={accounts} />
+        </div>
+      )}
 
       {/* Recent Transactions Section */}
       <div>
@@ -535,29 +560,16 @@ export default function MoneyOverviewPage() {
         )}
       </div>
 
-      {selectedGoal && (
-        <ProvisionDialog
-          open={provisionDialogOpen}
-          onOpenChange={setProvisionDialogOpen}
-          goal={selectedGoal}
-          accounts={accounts}
-          onSuccess={loadData}
-        />
-      )}
-
-      <AccountDetailsDialog
-        open={!!selectedAccount}
-        onOpenChange={(open) => !open && setSelectedAccount(null)}
-        account={selectedAccount}
-        transactions={transactions}
-        goals={goals}
-        categories={categories}
-        onProvision={handleProvision}
-        onEditTransaction={(tx: Transaction) => {
-          setEditingTransaction(tx)
-          setAddTransactionOpen(true)
+      <ProvisionDialog
+        open={provisionDialogOpen}
+        onOpenChange={(open) => {
+          setProvisionDialogOpen(open)
+          if (!open) setTimeout(() => setSelectedGoal(null), 200)
         }}
-        onDeleteTransaction={loadData}
+        goal={selectedGoal}
+        accounts={accounts}
+        goals={goals}
+        onSuccess={loadData}
       />
 
       <button
