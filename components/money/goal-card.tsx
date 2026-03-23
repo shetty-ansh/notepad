@@ -2,14 +2,16 @@
 
 import type { Goal } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { MoreVertical } from 'lucide-react'
+import { Edit2, Trash2 } from 'lucide-react'
 
 interface GoalCardProps {
   goal: Goal
   onProvision: () => void
+  onEdit?: () => void
+  onDelete?: () => void
 }
 
-export function GoalCard({ goal, onProvision }: GoalCardProps) {
+export function GoalCard({ goal, onProvision, onEdit, onDelete }: GoalCardProps) {
   const progress = goal.target_amount
     ? Math.min(
         100,
@@ -39,19 +41,34 @@ export function GoalCard({ goal, onProvision }: GoalCardProps) {
             {goal.name}
           </h3>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-[--radius-sm] text-[11px] font-medium ${getStatusColor(goal.status || 'active')}`}
           >
             {goal.status}
           </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-[--text-secondary] hover:text-[--text-primary]"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </Button>
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onEdit}
+              className="h-6 w-6 text-[--text-secondary] hover:text-[--text-primary]"
+              title="Edit"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDelete}
+              className="h-6 w-6 text-red-500 hover:text-red-600 hover:bg-red-50"
+              title="Delete"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 

@@ -1,14 +1,16 @@
 import type { Bill, Account } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { MoreVertical } from 'lucide-react'
+import { Edit2, Trash2 } from 'lucide-react'
 
 interface BillRowProps {
   bill: Bill
   account?: Account
   onMarkPaid: () => void
+  onEdit?: () => void
+  onDelete?: () => void
 }
 
-export function BillRow({ bill, account, onMarkPaid }: BillRowProps) {
+export function BillRow({ bill, account, onMarkPaid, onEdit, onDelete }: BillRowProps) {
   const isOverdueOrSoon = () => {
     if (!bill.next_due_date) return false
     const dueDate = new Date(bill.next_due_date)
@@ -56,13 +58,28 @@ export function BillRow({ bill, account, onMarkPaid }: BillRowProps) {
             maximumFractionDigits: 2,
           })}
         </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-[--text-secondary] hover:text-[--text-primary]"
-        >
-          <MoreVertical className="w-4 h-4" />
-        </Button>
+        {onEdit && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onEdit}
+            className="h-6 w-6 text-[--text-secondary] hover:text-[--text-primary]"
+            title="Edit"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </Button>
+        )}
+        {onDelete && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onDelete}
+            className="h-6 w-6 text-red-500 hover:text-red-600 hover:bg-red-50"
+            title="Delete"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        )}
       </div>
     </div>
   )

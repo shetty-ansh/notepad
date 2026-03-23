@@ -63,6 +63,40 @@ export async function addAccount(accountData: NewAccount): Promise<Account> {
 export async function deleteAccount(accountId: string): Promise<void> {
   const supabase = await createClient()
   const userId = await getUserId()
+
+  const { data: transactions } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('account_id', accountId)
+    .eq('user_id', userId)
+
+  if (transactions && transactions.length > 0) {
+    for (const tx of transactions) {
+      if (tx.type === 'provision' && tx.goal_id) {
+        const { data: goal } = await supabase
+          .from('goals')
+          .select('saved_amount')
+          .eq('id', tx.goal_id)
+          .eq('user_id', userId)
+          .single()
+
+        if (goal) {
+          await supabase
+            .from('goals')
+            .update({ saved_amount: Math.max(0, (goal.saved_amount ?? 0) - tx.amount) })
+            .eq('id', tx.goal_id)
+            .eq('user_id', userId)
+        }
+      }
+    }
+
+    await supabase
+      .from('transactions')
+      .delete()
+      .eq('account_id', accountId)
+      .eq('user_id', userId)
+  }
+
   const { error } = await supabase
     .from('accounts')
     .delete()
@@ -382,6 +416,21 @@ export async function addGoal(goalData: NewGoal): Promise<Goal> {
   return data
 }
 
+export async function updateGoal(id: string, updateData: Partial<NewGoal>): Promise<Goal> {
+  const supabase = await createClient()
+  const userId = await getUserId()
+  const { data, error } = await supabase
+    .from('goals')
+    .update(updateData)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+  return data
+}
+
 export async function provisionToGoal(goalId: string, amount: number, accountId: string): Promise<void> {
   const supabase = await createClient()
   const userId = await getUserId()
@@ -508,6 +557,21 @@ export async function addLedgerEntry(entryData: NewLedgerEntry): Promise<Ledger>
   return data
 }
 
+export async function updateLedgerEntry(id: string, entryData: Partial<NewLedgerEntry>): Promise<Ledger> {
+  const supabase = await createClient()
+  const userId = await getUserId()
+  const { data, error } = await supabase
+    .from('ledger')
+    .update(entryData)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+  return data
+}
+
 export async function settleLedgerEntry(id: string): Promise<void> {
   const supabase = await createClient()
   const userId = await getUserId()
@@ -561,6 +625,33 @@ export async function addBill(billData: NewBill): Promise<Bill> {
 
   if (error) throw new Error(error.message)
   return data
+}
+
+export async function updateBill(id: string, updateData: Partial<NewBill>): Promise<Bill> {
+  const supabase = await createClient()
+  const userId = await getUserId()
+  const { data, error } = await supabase
+    .from('bills')
+    .update(updateData)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+  return data
+}
+
+export async function deleteBill(id: string): Promise<void> {
+  const supabase = await createClient()
+  const userId = await getUserId()
+  const { error } = await supabase
+    .from('bills')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId)
+
+  if (error) throw new Error(error.message)
 }
 
 export async function markBillPaid(id: string): Promise<void> {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Dialog,
@@ -19,18 +19,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { addBill } from '@/lib/actions/money'
+import { addBill, updateBill } from '@/lib/actions/money'
 import { toast } from 'sonner'
 import { CustomToast } from '@/components/toastMessage'
-import type { NewBill, Account, BillFrequency } from '@/lib/types'
+import type { NewBill, Account, BillFrequency, Bill } from '@/lib/types'
 
 interface AddBillDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   accounts: Account[]
+  billToEdit?: Bill | null
+  onSuccess?: (bill: Bill, isEdit: boolean) => void
 }
 
-export function AddBillDialog({ open, onOpenChange, accounts }: AddBillDialogProps) {
+export function AddBillDialog({ open, onOpenChange, accounts, billToEdit, onSuccess }: AddBillDialogProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<NewBill>({
@@ -44,15 +46,19 @@ export function AddBillDialog({ open, onOpenChange, accounts }: AddBillDialogPro
     is_active: true,
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      await addBill(formData)
-      toast.custom(() => (
-        <CustomToast type="success" title="Bill added" message="Your bill has been saved." />
-      ))
-      onOpenChange(false)
+  useEffect(() => {
+    if (billToEdit && open) {
+      setFormData({
+        name: billToEdit.name,
+        amount: billToEdit.amount,
+        frequency: billToEdit.frequency as BillFrequency,
+        next_due_date: billToEdit.next_due_date || new Date().toISOString().split('T')[0],
+        account_id: billToEdit.account_id,
+        category: billToEdit.category,
+        auto_pay: billToEdit.auto_pay,
+        is_active: billToEdit.is_active,
+      })
+    } else if (!open) {
       setFormData({
         name: '',
         amount: 0,
@@ -63,12 +69,34 @@ export function AddBillDialog({ open, onOpenChange, accounts }: AddBillDialogPro
         auto_pay: false,
         is_active: true,
       })
-      router.refresh()
+    }
+  }, [billToEdit, open, accounts])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      let result: Bill
+      if (billToEdit) {
+        result = await updateBill(billToEdit.id, formData)
+        toast.custom(() => (
+          <CustomToast type="success" title="Bill updated" message="Your bill has been updated." />
+        ))
+      } else {
+        result = await addBill(formData)
+        toast.custom(() => (
+          <CustomToast type="success" title="Bill added" message="Your bill has been saved." />
+        ))
+      }
+      
+      if (onSuccess) onSuccess(result, !!billToEdit)
+      onOpenChange(false)
+      if (!onSuccess) router.refresh()
     } catch (error) {
       toast.custom(() => (
         <CustomToast
           type="error"
-          title="Failed to add bill"
+          title={`Failed to ${billToEdit ? 'update' : 'add'} bill`}
           message={error instanceof Error ? error.message : 'Something went wrong'}
         />
       ))
@@ -81,7 +109,7 @@ export function AddBillDialog({ open, onOpenChange, accounts }: AddBillDialogPro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-[#FCF9F5] border border-[--border] rounded-[12px] shadow-md p-6 max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base font-medium">Add Bill</DialogTitle>
+          <DialogTitle className="text-base font-medium">{billToEdit ? 'Edit Bill' : 'Add Bill'}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -195,7 +223,7 @@ export function AddBillDialog({ open, onOpenChange, accounts }: AddBillDialogPro
               disabled={loading}
               className="bg-black text-white hover:bg-green-900 h-8 px-3 text-sm font-medium rounded-[8px] shadow-none"
             >
-              {loading ? 'Adding...' : 'Add Bill'}
+              {loading ? (billToEdit ? 'Saving...' : 'Adding...') : (billToEdit ? 'Save Changes' : 'Add Bill')}
             </Button>
           </DialogFooter>
         </form>

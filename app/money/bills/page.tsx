@@ -7,6 +7,7 @@ import {
   getBills,
   getReminders,
   markBillPaid,
+  deleteBill,
 } from '@/lib/actions/money'
 import { BillRow } from '@/components/money/bill-row'
 import { ReminderRow } from '@/components/money/reminder-row'
@@ -23,6 +24,7 @@ export default function BillsPage() {
   const [bills, setBills] = useState<Bill[]>([])
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [billDialogOpen, setBillDialogOpen] = useState(false)
+  const [editingBill, setEditingBill] = useState<Bill | null>(null)
 
   useEffect(() => {
     loadData()
@@ -58,6 +60,45 @@ export default function BillsPage() {
     }
   }
 
+  const handleDeleteBill = async (id: string) => {
+    setBills(prev => prev.filter(b => b.id !== id))
+    try {
+      await deleteBill(id)
+      toast.custom(() => (
+        <CustomToast type="success" title="Bill deleted" message="Bill has been removed." />
+      ))
+      // Refetch reminders as well, since cascade delete might not update local state
+      loadData()
+    } catch (error) {
+      loadData()
+      toast.custom(() => (
+        <CustomToast type="error" title="Failed to delete" message="Something went wrong" />
+      ))
+    }
+  }
+
+  const handleEditBill = (bill: Bill) => {
+    setEditingBill(bill)
+    setBillDialogOpen(true)
+  }
+
+  const handleBillSuccess = (bill: Bill, isEdit: boolean) => {
+    setBills(prev => {
+      let updated = prev
+      if (isEdit) {
+        updated = prev.map(b => b.id === bill.id ? bill : b)
+      } else {
+        updated = [bill, ...prev]
+      }
+      return updated.sort((a, b) => {
+        if (!a.next_due_date) return 1
+        if (!b.next_due_date) return -1
+        return new Date(a.next_due_date).getTime() - new Date(b.next_due_date).getTime()
+      })
+    })
+    loadData() // Refresh to grab updated reminders if applicable
+  }
+
   const upcomingReminders = reminders.filter((r) => !r.is_done)
 
   return (
@@ -65,7 +106,10 @@ export default function BillsPage() {
       <header className="flex items-center justify-between h-14 px-6 border-b border-[--border] shrink-0">
         <h1 className="text-[20px] font-medium">Bills & Reminders</h1>
         <Button
-          onClick={() => setBillDialogOpen(true)}
+          onClick={() => {
+            setEditingBill(null)
+            setBillDialogOpen(true)
+          }}
           className="bg-[--accent] text-[--accent-foreground] hover:bg-[--accent-hover] h-8 px-3 text-sm font-medium rounded-[--radius-md] shadow-none"
         >
           <Plus className="w-4 h-4 mr-1.5" />
@@ -88,7 +132,10 @@ export default function BillsPage() {
                 Add one to get started
               </p>
               <Button
-                onClick={() => setBillDialogOpen(true)}
+                onClick={() => {
+                  setEditingBill(null)
+                  setBillDialogOpen(true)
+                }}
                 className="mt-4 bg-[--accent] text-[--accent-foreground] hover:bg-[--accent-hover] h-8 px-3 text-sm font-medium rounded-[--radius-md] shadow-none"
               >
                 Add Bill
@@ -106,6 +153,8 @@ export default function BillsPage() {
                     bill={bill}
                     account={account}
                     onMarkPaid={() => handleMarkPaid(bill.id)}
+                    onEdit={() => handleEditBill(bill)}
+                    onDelete={() => handleDeleteBill(bill.id)}
                   />
                 )
               })}
@@ -137,8 +186,13 @@ export default function BillsPage() {
 
       <AddBillDialog
         open={billDialogOpen}
-        onOpenChange={setBillDialogOpen}
+        onOpenChange={(open) => {
+          setBillDialogOpen(open)
+          if (!open) setTimeout(() => setEditingBill(null), 200)
+        }}
         accounts={accounts}
+        billToEdit={editingBill}
+        onSuccess={handleBillSuccess}
       />
     </div>
   )

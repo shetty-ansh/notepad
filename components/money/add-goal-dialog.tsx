@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Dialog,
@@ -19,18 +19,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { addGoal } from '@/lib/actions/money'
+import { addGoal, updateGoal } from '@/lib/actions/money'
 import { toast } from 'sonner'
 import { CustomToast } from '@/components/toastMessage'
-import type { NewGoal, Account } from '@/lib/types'
+import type { NewGoal, Account, Goal } from '@/lib/types'
 
 interface AddGoalDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   accounts: Account[]
+  goalToEdit?: Goal | null
+  onSuccess?: (goal: Goal, isEdit: boolean) => void
 }
 
-export function AddGoalDialog({ open, onOpenChange, accounts }: AddGoalDialogProps) {
+export function AddGoalDialog({ open, onOpenChange, accounts, goalToEdit, onSuccess }: AddGoalDialogProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<NewGoal>({
@@ -42,22 +44,46 @@ export function AddGoalDialog({ open, onOpenChange, accounts }: AddGoalDialogPro
     status: 'active',
   })
 
+  useEffect(() => {
+    if (goalToEdit && open) {
+      setFormData({
+        name: goalToEdit.name,
+        target_amount: goalToEdit.target_amount,
+        target_date: goalToEdit.target_date,
+        icon: goalToEdit.icon,
+        account_id: goalToEdit.account_id,
+        status: goalToEdit.status,
+      })
+    } else if (!open) {
+      setFormData({ name: '', target_amount: 0, target_date: null, icon: '🎯', account_id: null, status: 'active' })
+    }
+  }, [goalToEdit, open])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await addGoal(formData)
-      toast.custom(() => (
-        <CustomToast type="success" title="Goal created" message="Your savings goal has been added." />
-      ))
+      let result: Goal
+      if (goalToEdit) {
+        result = await updateGoal(goalToEdit.id, formData)
+        toast.custom(() => (
+          <CustomToast type="success" title="Goal updated" message="Your savings goal has been updated." />
+        ))
+      } else {
+        result = await addGoal(formData)
+        toast.custom(() => (
+          <CustomToast type="success" title="Goal created" message="Your savings goal has been added." />
+        ))
+      }
+
+      if (onSuccess) onSuccess(result, !!goalToEdit)
       onOpenChange(false)
-      setFormData({ name: '', target_amount: 0, target_date: null, icon: '🎯', account_id: null, status: 'active' })
-      router.refresh()
+      if (!onSuccess) router.refresh()
     } catch (error) {
       toast.custom(() => (
         <CustomToast
           type="error"
-          title="Failed to add goal"
+          title={`Failed to ${goalToEdit ? 'update' : 'add'} goal`}
           message={error instanceof Error ? error.message : 'Something went wrong'}
         />
       ))
@@ -70,7 +96,7 @@ export function AddGoalDialog({ open, onOpenChange, accounts }: AddGoalDialogPro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-[#FCF9F5] border border-[--border] rounded-[12px] shadow-md p-6 max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base font-medium">Add Goal</DialogTitle>
+          <DialogTitle className="text-base font-medium">{goalToEdit ? 'Edit Goal' : 'Add Goal'}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -151,7 +177,7 @@ export function AddGoalDialog({ open, onOpenChange, accounts }: AddGoalDialogPro
               disabled={loading}
               className="bg-black text-white hover:bg-green-900 h-8 px-3 text-sm font-medium rounded-[8px] shadow-none"
             >
-              {loading ? 'Adding...' : 'Add Goal'}
+              {loading ? (goalToEdit ? 'Saving...' : 'Adding...') : (goalToEdit ? 'Save Changes' : 'Add Goal')}
             </Button>
           </DialogFooter>
         </form>

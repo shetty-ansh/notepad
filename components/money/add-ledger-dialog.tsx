@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Dialog,
@@ -12,17 +12,19 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { addLedgerEntry } from '@/lib/actions/money'
+import { addLedgerEntry, updateLedgerEntry } from '@/lib/actions/money'
 import { toast } from 'sonner'
 import { CustomToast } from '@/components/toastMessage'
-import type { NewLedgerEntry } from '@/lib/types'
+import type { NewLedgerEntry, Ledger } from '@/lib/types'
 
 interface AddLedgerDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  entryToEdit?: Ledger | null
+  onSuccess?: (entry: Ledger, isEdit: boolean) => void
 }
 
-export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
+export function AddLedgerDialog({ open, onOpenChange, entryToEdit, onSuccess }: AddLedgerDialogProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<NewLedgerEntry>({
@@ -34,22 +36,47 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
     status: 'pending',
   })
 
+  useEffect(() => {
+    if (entryToEdit && open) {
+      setFormData({
+        person_name: entryToEdit.person_name,
+        amount: entryToEdit.amount,
+        direction: entryToEdit.direction,
+        description: entryToEdit.description,
+        due_date: entryToEdit.due_date,
+        status: entryToEdit.status,
+      })
+    } else if (!open) {
+      // Reset when closing
+      setFormData({ person_name: '', amount: 0, direction: 'i_owe', description: '', due_date: null, status: 'pending' })
+    }
+  }, [entryToEdit, open])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await addLedgerEntry(formData)
-      toast.custom(() => (
-        <CustomToast type="success" title="Entry added" message="Ledger entry has been recorded." />
-      ))
+      let result: Ledger
+      if (entryToEdit) {
+        result = await updateLedgerEntry(entryToEdit.id, formData)
+        toast.custom(() => (
+          <CustomToast type="success" title="Entry updated" message="Ledger entry has been updated." />
+        ))
+      } else {
+        result = await addLedgerEntry(formData)
+        toast.custom(() => (
+          <CustomToast type="success" title="Entry added" message="Ledger entry has been recorded." />
+        ))
+      }
+      
+      if (onSuccess) onSuccess(result, !!entryToEdit)
       onOpenChange(false)
-      setFormData({ person_name: '', amount: 0, direction: 'i_owe', description: '', due_date: null, status: 'pending' })
-      router.refresh()
+      if (!onSuccess) router.refresh()
     } catch (error) {
       toast.custom(() => (
         <CustomToast
           type="error"
-          title="Failed to add entry"
+          title={`Failed to ${entryToEdit ? 'update' : 'add'} entry`}
           message={error instanceof Error ? error.message : 'Something went wrong'}
         />
       ))
@@ -62,7 +89,7 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-[#FCF9F5] border border-[--border] rounded-[12px] shadow-md p-6 max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base font-medium">Add Ledger Entry</DialogTitle>
+          <DialogTitle className="text-base font-medium">{entryToEdit ? 'Edit Ledger Entry' : 'Add Ledger Entry'}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -152,7 +179,7 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
               disabled={loading}
               className="bg-black text-white hover:bg-green-900 h-8 px-3 text-sm font-medium rounded-[8px] shadow-none"
             >
-              {loading ? 'Adding...' : 'Add Entry'}
+              {loading ? (entryToEdit ? 'Saving...' : 'Adding...') : (entryToEdit ? 'Save Changes' : 'Add Entry')}
             </Button>
           </DialogFooter>
         </form>

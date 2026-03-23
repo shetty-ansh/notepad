@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getAccounts, getGoals } from '@/lib/actions/money'
+import { getAccounts, getGoals, deleteGoal } from '@/lib/actions/money'
+import { toast } from 'sonner'
+import { CustomToast } from '@/components/toastMessage'
 import { GoalCard } from '@/components/money/goal-card'
 import { AddGoalDialog } from '@/components/money/add-goal-dialog'
 import { ProvisionDialog } from '@/components/money/provision-dialog'
@@ -15,6 +17,7 @@ export default function GoalsPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [provisionDialogOpen, setProvisionDialogOpen] = useState(false)
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
 
   useEffect(() => {
     loadData()
@@ -34,12 +37,45 @@ export default function GoalsPage() {
     setProvisionDialogOpen(true)
   }
 
+  const handleDelete = async (id: string) => {
+    setGoals(prev => prev.filter(g => g.id !== id))
+    try {
+      await deleteGoal(id)
+      toast.custom(() => (
+        <CustomToast type="success" title="Goal deleted" message="Goal has been removed." />
+      ))
+    } catch (error) {
+      loadData()
+      toast.custom(() => (
+        <CustomToast type="error" title="Failed to delete" message="Something went wrong" />
+      ))
+    }
+  }
+
+  const handleEdit = (goal: Goal) => {
+    setEditingGoal(goal)
+    setAddDialogOpen(true)
+  }
+
+  const handleSuccess = (goal: Goal, isEdit: boolean) => {
+    setGoals(prev => {
+      if (isEdit) {
+        return prev.map(g => g.id === goal.id ? goal : g)
+      } else {
+        return [goal, ...prev]
+      }
+    })
+  }
+
   return (
     <div className="flex flex-col h-full">
       <header className="flex items-center justify-between h-14 px-6 border-b border-[--border] shrink-0">
         <h1 className="text-[20px] font-medium">Goals</h1>
         <Button
-          onClick={() => setAddDialogOpen(true)}
+          onClick={() => {
+            setEditingGoal(null)
+            setAddDialogOpen(true)
+          }}
           className="bg-[--accent] text-[--accent-foreground] hover:bg-[--accent-hover] h-8 px-3 text-sm font-medium rounded-[--radius-md] shadow-none"
         >
           <Plus className="w-4 h-4 mr-1.5" />
@@ -57,7 +93,10 @@ export default function GoalsPage() {
               Add one to get started
             </p>
             <Button
-              onClick={() => setAddDialogOpen(true)}
+              onClick={() => {
+                setEditingGoal(null)
+                setAddDialogOpen(true)
+              }}
               className="mt-4 bg-[--accent] text-[--accent-foreground] hover:bg-[--accent-hover] h-8 px-3 text-sm font-medium rounded-[--radius-md] shadow-none"
             >
               Add Goal
@@ -70,6 +109,8 @@ export default function GoalsPage() {
                 key={goal.id}
                 goal={goal}
                 onProvision={() => handleProvision(goal)}
+                onEdit={() => handleEdit(goal)}
+                onDelete={() => handleDelete(goal.id)}
               />
             ))}
           </div>
@@ -78,8 +119,13 @@ export default function GoalsPage() {
 
       <AddGoalDialog
         open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
+        onOpenChange={(open) => {
+          setAddDialogOpen(open)
+          if (!open) setTimeout(() => setEditingGoal(null), 200)
+        }}
         accounts={accounts}
+        goalToEdit={editingGoal}
+        onSuccess={handleSuccess}
       />
 
       {selectedGoal && (

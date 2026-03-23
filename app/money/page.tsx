@@ -8,6 +8,11 @@ import {
   getLedger,
   getBills,
   getTransactionCategories,
+  settleLedgerEntry,
+  deleteLedgerEntry,
+  deleteGoal,
+  deleteBill,
+  markBillPaid,
 } from '@/lib/actions/money'
 import { AccountCard } from '@/components/money/account-card'
 import { AddAccountButton } from '@/components/money/add-account-button'
@@ -17,6 +22,9 @@ import { ProvisionDialog } from '@/components/money/provision-dialog'
 import { AccountDetailsDialog } from '@/components/money/account-details-dialog'
 import { AddTransactionDialog } from '@/components/money/add-transaction-dialog'
 import { LedgerRow } from '@/components/money/ledger-row'
+import { AddLedgerDialog } from '@/components/money/add-ledger-dialog'
+import { AddGoalDialog } from '@/components/money/add-goal-dialog'
+import { AddBillDialog } from '@/components/money/add-bill-dialog'
 import { BillRow } from '@/components/money/bill-row'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
@@ -34,6 +42,12 @@ export default function MoneyOverviewPage() {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
   const [addTransactionOpen, setAddTransactionOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  const [ledgerDialogOpen, setLedgerDialogOpen] = useState(false)
+  const [editingLedger, setEditingLedger] = useState<Ledger | null>(null)
+  const [goalDialogOpen, setGoalDialogOpen] = useState(false)
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
+  const [billDialogOpen, setBillDialogOpen] = useState(false)
+  const [editingBill, setEditingBill] = useState<Bill | null>(null)
 
   useEffect(() => {
     loadData()
@@ -66,6 +80,107 @@ export default function MoneyOverviewPage() {
   const handleProvision = (goal: Goal) => {
     setSelectedGoal(goal)
     setProvisionDialogOpen(true)
+  }
+
+  const handleDeleteGoal = async (id: string) => {
+    setGoals(prev => prev.filter(g => g.id !== id))
+    try {
+      await deleteGoal(id)
+      loadData()
+    } catch {
+      loadData()
+    }
+  }
+
+  const handleEditGoal = (goal: Goal) => {
+    setEditingGoal(goal)
+    setGoalDialogOpen(true)
+  }
+
+  const handleGoalSuccess = (goal: Goal, isEdit: boolean) => {
+    setGoals(prev => {
+      if (isEdit) {
+        return prev.map(g => g.id === goal.id ? goal : g)
+      } else {
+        return [goal, ...prev]
+      }
+    })
+  }
+
+  const handleSettleLedger = async (id: string) => {
+    setLedger(prev => prev.map(e => e.id === id ? { ...e, status: 'settled' } : e))
+    try {
+      await settleLedgerEntry(id)
+      loadData()
+    } catch {
+      loadData()
+    }
+  }
+
+  const handleDeleteLedger = async (id: string) => {
+    setLedger(prev => prev.filter(e => e.id !== id))
+    try {
+      await deleteLedgerEntry(id)
+      loadData()
+    } catch {
+      loadData()
+    }
+  }
+
+  const handleEditLedger = (entry: Ledger) => {
+    setEditingLedger(entry)
+    setLedgerDialogOpen(true)
+  }
+
+  const handleLedgerSuccess = (entry: Ledger, isEdit: boolean) => {
+    setLedger(prev => {
+      if (isEdit) {
+        return prev.map(e => e.id === entry.id ? entry : e)
+      } else {
+        return [entry, ...prev].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+      }
+    })
+  }
+
+  const handleMarkPaid = async (billId: string) => {
+    try {
+      await markBillPaid(billId)
+      loadData()
+    } catch {
+      loadData()
+    }
+  }
+
+  const handleDeleteBill = async (id: string) => {
+    setBills(prev => prev.filter(b => b.id !== id))
+    try {
+      await deleteBill(id)
+      loadData()
+    } catch {
+      loadData()
+    }
+  }
+
+  const handleEditBill = (bill: Bill) => {
+    setEditingBill(bill)
+    setBillDialogOpen(true)
+  }
+
+  const handleBillSuccess = (bill: Bill, isEdit: boolean) => {
+    setBills(prev => {
+      let updated = prev
+      if (isEdit) {
+        updated = prev.map(b => b.id === bill.id ? bill : b)
+      } else {
+        updated = [bill, ...prev]
+      }
+      return updated.sort((a, b) => {
+        if (!a.next_due_date) return 1
+        if (!b.next_due_date) return -1
+        return new Date(a.next_due_date).getTime() - new Date(b.next_due_date).getTime()
+      })
+    })
+    loadData()
   }
 
   // Calculate monthly summary
@@ -226,6 +341,15 @@ export default function MoneyOverviewPage() {
               View all →
             </Link>
           )}
+          <button
+            onClick={() => {
+              setEditingGoal(null)
+              setGoalDialogOpen(true)
+            }}
+            className="ml-auto text-xs text-[--accent] hover:underline flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3" /> Add
+          </button>
         </div>
 
         {goals.length === 0 ? (
@@ -244,6 +368,8 @@ export default function MoneyOverviewPage() {
                 key={goal.id}
                 goal={goal}
                 onProvision={() => handleProvision(goal)}
+                onEdit={() => handleEditGoal(goal)}
+                onDelete={() => handleDeleteGoal(goal.id)}
               />
             ))}
           </div>
@@ -264,6 +390,15 @@ export default function MoneyOverviewPage() {
               View all →
             </Link>
           )}
+          <button
+            onClick={() => {
+              setEditingLedger(null)
+              setLedgerDialogOpen(true)
+            }}
+            className="ml-auto text-xs text-[--accent] hover:underline flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3" /> Add
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -288,7 +423,9 @@ export default function MoneyOverviewPage() {
                     <LedgerRow
                       key={entry.id}
                       entry={entry}
-                      onSettle={() => { }}
+                      onSettle={() => handleSettleLedger(entry.id)}
+                      onEdit={() => handleEditLedger(entry)}
+                      onDelete={() => handleDeleteLedger(entry.id)}
                     />
                   ))}
               </div>
@@ -319,7 +456,9 @@ export default function MoneyOverviewPage() {
                     <LedgerRow
                       key={entry.id}
                       entry={entry}
-                      onSettle={() => { }}
+                      onSettle={() => handleSettleLedger(entry.id)}
+                      onEdit={() => handleEditLedger(entry)}
+                      onDelete={() => handleDeleteLedger(entry.id)}
                     />
                   ))}
               </div>
@@ -342,6 +481,15 @@ export default function MoneyOverviewPage() {
               View all →
             </Link>
           )}
+          <button
+            onClick={() => {
+              setEditingBill(null)
+              setBillDialogOpen(true)
+            }}
+            className="ml-auto text-xs text-[--accent] hover:underline flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3" /> Add
+          </button>
         </div>
 
         {bills.filter((bill) => {
@@ -377,7 +525,9 @@ export default function MoneyOverviewPage() {
                     key={bill.id}
                     bill={bill}
                     account={account}
-                    onMarkPaid={() => { }}
+                    onMarkPaid={() => handleMarkPaid(bill.id)}
+                    onEdit={() => handleEditBill(bill)}
+                    onDelete={() => handleDeleteBill(bill.id)}
                   />
                 )
               })}
@@ -433,6 +583,38 @@ export default function MoneyOverviewPage() {
         onCategoryAdded={loadData}
         onSuccess={loadData}
         existingTransaction={editingTransaction}
+      />
+
+      <AddLedgerDialog
+        open={ledgerDialogOpen}
+        onOpenChange={(open) => {
+          setLedgerDialogOpen(open)
+          if (!open) setTimeout(() => setEditingLedger(null), 200)
+        }}
+        entryToEdit={editingLedger}
+        onSuccess={handleLedgerSuccess}
+      />
+
+      <AddGoalDialog
+        open={goalDialogOpen}
+        onOpenChange={(open) => {
+          setGoalDialogOpen(open)
+          if (!open) setTimeout(() => setEditingGoal(null), 200)
+        }}
+        accounts={accounts}
+        goalToEdit={editingGoal}
+        onSuccess={handleGoalSuccess}
+      />
+
+      <AddBillDialog
+        open={billDialogOpen}
+        onOpenChange={(open) => {
+          setBillDialogOpen(open)
+          if (!open) setTimeout(() => setEditingBill(null), 200)
+        }}
+        accounts={accounts}
+        billToEdit={editingBill}
+        onSuccess={handleBillSuccess}
       />
     </div>
   )

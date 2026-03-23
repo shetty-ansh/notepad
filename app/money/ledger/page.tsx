@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getLedger, settleLedgerEntry } from '@/lib/actions/money'
+import { getLedger, settleLedgerEntry, deleteLedgerEntry } from '@/lib/actions/money'
 import { LedgerRow } from '@/components/money/ledger-row'
 import { AddLedgerDialog } from '@/components/money/add-ledger-dialog'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ export default function LedgerPage() {
   const [entries, setEntries] = useState<Ledger[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [settledOpen, setSettledOpen] = useState(false)
+  const [editingEntry, setEditingEntry] = useState<Ledger | null>(null)
 
   useEffect(() => {
     loadData()
@@ -27,14 +28,17 @@ export default function LedgerPage() {
   }
 
   const handleSettle = async (id: string) => {
+    // Optimistic update
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, status: 'settled' } : e))
     try {
       await settleLedgerEntry(id)
       toast.custom(() => (
         <CustomToast type="success" title="Entry settled" message="Ledger entry marked as settled." />
       ))
       router.refresh()
-      loadData()
     } catch (error) {
+      // Revert on error
+      loadData()
       toast.custom(() => (
         <CustomToast
           type="error"
@@ -42,6 +46,49 @@ export default function LedgerPage() {
           message={error instanceof Error ? error.message : 'Something went wrong'}
         />
       ))
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    // Optimistic delete
+    setEntries(prev => prev.filter(e => e.id !== id))
+    try {
+      await deleteLedgerEntry(id)
+      toast.custom(() => (
+        <CustomToast type="success" title="Entry deleted" message="Ledger entry has been deleted." />
+      ))
+      router.refresh()
+    } catch (error) {
+      loadData()
+      toast.custom(() => (
+        <CustomToast
+          type="error"
+          title="Failed to delete"
+          message={error instanceof Error ? error.message : 'Something went wrong'}
+        />
+      ))
+    }
+  }
+
+  const handleEdit = (entry: Ledger) => {
+    setEditingEntry(entry)
+    setDialogOpen(true)
+  }
+
+  const handleEntrySuccess = (entry: Ledger, isEdit: boolean) => {
+    setEntries(prev => {
+      if (isEdit) {
+        return prev.map(e => e.id === entry.id ? entry : e)
+      } else {
+        return [entry, ...prev].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+      }
+    })
+  }
+
+  const handleDialogChange = (open: boolean) => {
+    setDialogOpen(open)
+    if (!open) {
+      setTimeout(() => setEditingEntry(null), 200) // Delay to avoid UI jump during close animation
     }
   }
 
@@ -58,7 +105,10 @@ export default function LedgerPage() {
       <header className="flex items-center justify-between h-14 px-6 border-b border-[--border] shrink-0">
         <h1 className="text-[20px] font-medium">Ledger</h1>
         <Button
-          onClick={() => setDialogOpen(true)}
+          onClick={() => {
+            setEditingEntry(null)
+            setDialogOpen(true)
+          }}
           className="bg-[--accent] text-[--accent-foreground] hover:bg-[--accent-hover] h-8 px-3 text-sm font-medium rounded-[--radius-md] shadow-none"
         >
           <Plus className="w-4 h-4 mr-1.5" />
@@ -102,6 +152,8 @@ export default function LedgerPage() {
                       key={entry.id}
                       entry={entry}
                       onSettle={() => handleSettle(entry.id)}
+                      onEdit={() => handleEdit(entry)}
+                      onDelete={() => handleDelete(entry.id)}
                     />
                   ))}
                 </div>
@@ -126,6 +178,8 @@ export default function LedgerPage() {
                       key={entry.id}
                       entry={entry}
                       onSettle={() => handleSettle(entry.id)}
+                      onEdit={() => handleEdit(entry)}
+                      onDelete={() => handleDelete(entry.id)}
                     />
                   ))}
                 </div>
@@ -153,6 +207,8 @@ export default function LedgerPage() {
                     key={entry.id}
                     entry={entry}
                     onSettle={() => {}}
+                    onEdit={() => handleEdit(entry)}
+                    onDelete={() => handleDelete(entry.id)}
                   />
                 ))}
               </div>
@@ -161,7 +217,12 @@ export default function LedgerPage() {
         )}
       </div>
 
-      <AddLedgerDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <AddLedgerDialog 
+        open={dialogOpen} 
+        onOpenChange={handleDialogChange} 
+        entryToEdit={editingEntry}
+        onSuccess={handleEntrySuccess}
+      />
     </div>
   )
 }
