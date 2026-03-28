@@ -9,6 +9,7 @@ const tabs = [
   { name: 'Goals', href: '/money/goals' },
   { name: 'Ledger', href: '/money/ledger' },
   { name: 'Bills', href: '/money/bills' },
+  { name: 'Stats', href: '/money/stats' },
 ]
 
 export default function MoneyLayout({

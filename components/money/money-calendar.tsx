@@ -147,10 +147,27 @@ export function MoneyCalendar({ transactions, accounts = [] }: MoneyCalendarProp
               </span>
 
               {data && (
-                <div className="mt-auto w-full">
+                <div className="mt-auto w-full flex flex-col gap-1">
+                  <div className="flex flex-wrap gap-0.5 justify-end">
+                    {data.txns.slice(0, 5).map((tx, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          'w-1.5 h-1.5 md:w-2 md:h-2 rounded-full',
+                          tx.type === 'income' ? 'bg-green-500' :
+                          tx.type === 'expense' ? 'bg-red-500' :
+                          tx.type === 'transfer' ? 'bg-blue-500' : 'bg-yellow-500'
+                        )}
+                        title={tx.type}
+                      />
+                    ))}
+                    {data.txns.length > 5 && (
+                      <span className="text-[8px] text-gray-400 inline-flex items-center">+{data.txns.length - 5}</span>
+                    )}
+                  </div>
                   <p
                     className={cn(
-                      'text-[10px] md:text-sm font-mono font-bold text-right truncate',
+                      'text-[9px] md:text-xs font-mono font-bold text-right truncate',
                       data.net > 0 && 'text-green-600',
                       data.net < 0 && 'text-red-500',
                       data.net === 0 && 'text-gray-400',
@@ -158,11 +175,6 @@ export function MoneyCalendar({ transactions, accounts = [] }: MoneyCalendarProp
                   >
                     {data.net >= 0 ? '+' : '−'}₹{Math.abs(data.net).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </p>
-                  {data.txns.length > 1 && (
-                    <p className="text-[9px] font-semibold text-gray-400 text-right">
-                      {data.txns.length} txns
-                    </p>
-                  )}
                 </div>
               )}
             </button>

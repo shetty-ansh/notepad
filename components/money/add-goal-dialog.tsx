@@ -7,11 +7,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -35,6 +33,7 @@ interface AddGoalDialogProps {
 export function AddGoalDialog({ open, onOpenChange, accounts, goalToEdit, onSuccess }: AddGoalDialogProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [amountStr, setAmountStr] = useState('')
   const [formData, setFormData] = useState<NewGoal>({
     name: '',
     target_amount: 0,
@@ -49,13 +48,22 @@ export function AddGoalDialog({ open, onOpenChange, accounts, goalToEdit, onSucc
       setFormData({
         name: goalToEdit.name,
         target_amount: goalToEdit.target_amount,
-        target_date: goalToEdit.target_date,
-        icon: goalToEdit.icon,
-        account_id: goalToEdit.account_id,
-        status: goalToEdit.status,
+        target_date: goalToEdit.target_date || '',
+        icon: goalToEdit.icon || '',
+        status: goalToEdit.status || 'active',
+        account_id: null
       })
+      setAmountStr(goalToEdit.target_amount ? String(goalToEdit.target_amount) : '')
     } else if (!open) {
-      setFormData({ name: '', target_amount: 0, target_date: null, icon: '🎯', account_id: null, status: 'active' })
+      setFormData({
+        name: '',
+        target_amount: 0,
+        target_date: '',
+        icon: '',
+        status: 'active',
+        account_id: null
+      })
+      setAmountStr('')
     }
   }, [goalToEdit, open])
 
@@ -94,92 +102,71 @@ export function AddGoalDialog({ open, onOpenChange, accounts, goalToEdit, onSucc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#FCF9F5] border border-[--border] rounded-[12px] shadow-md p-6 max-w-md">
+      <DialogContent className="bg-[#FCF9F5] border border-gray-200 rounded-[6px] shadow-md p-5 max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base font-medium">{goalToEdit ? 'Edit Goal' : 'Add Goal'}</DialogTitle>
+          <DialogTitle className="text-lg font-bold">{goalToEdit ? 'Edit Goal' : 'Add Goal'}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div>
-            <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Name</Label>
+            <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Name</label>
             <Input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="bg-white border-[--border] focus:border-[--border-strong] h-9 text-sm rounded-[8px]"
+              placeholder="e.g. New Laptop"
+              className="bg-white border-2 border-gray-300 focus:border-black h-9 text-sm rounded-[6px]"
               required
             />
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <div className="flex-1">
-              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Target Amount</Label>
+              <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Target Amount</label>
               <Input
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
-                value={formData.target_amount || 0}
-                onChange={(e) => setFormData({ ...formData, target_amount: parseFloat(e.target.value) })}
-                className="bg-white border-[--border] focus:border-[--border-strong] h-9 text-sm rounded-[8px] font-mono"
+                value={amountStr}
+                onChange={(e) => {
+                  setAmountStr(e.target.value)
+                  const val = parseInt(e.target.value)
+                  setFormData({ ...formData, target_amount: isNaN(val) ? 0 : val })
+                }}
+                placeholder="0"
+                className="bg-white border-2 border-gray-300 focus:border-black h-9 text-sm rounded-[6px] font-mono"
                 required
               />
             </div>
             <div className="flex-1">
-              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Target Date (Optional)</Label>
+              <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Target Date</label>
               <Input
                 type="date"
                 value={formData.target_date || ''}
                 onChange={(e) => setFormData({ ...formData, target_date: e.target.value || null })}
-                className="bg-white border-[--border] focus:border-[--border-strong] h-9 text-sm rounded-[8px]"
+                className="bg-white border-2 border-gray-300 focus:border-black h-9 text-sm rounded-[6px]"
               />
             </div>
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Icon</Label>
-              <Input
-                value={formData.icon || ''}
-                onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                className="bg-white border-[--border] focus:border-[--border-strong] h-9 text-sm rounded-[8px]"
-                placeholder="🎯"
-              />
-            </div>
-            <div className="flex-1">
-              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Account (Optional)</Label>
-              <Select
-                value={formData.account_id || 'none'}
-                onValueChange={(value) => setFormData({ ...formData, account_id: value === 'none' ? null : value })}
-              >
-                <SelectTrigger className="bg-white border-[--border] h-9 text-sm rounded-[8px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {accounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          <DialogFooter className="flex gap-2 justify-end pt-4">
+
+          <div className="flex gap-2 justify-end pt-2">
             <Button
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="h-8 px-3 text-sm text-red-600 hover:bg-red-600 hover:text-white rounded-[8px]"
+              className="h-8 px-3 text-sm text-red-600 hover:bg-red-600 hover:text-white rounded-[6px]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="bg-black text-white hover:bg-green-900 h-8 px-3 text-sm font-medium rounded-[8px] shadow-none"
+              className="bg-black text-white hover:bg-green-900 h-8 px-4 text-sm font-medium rounded-[6px] shadow-none"
             >
               {loading ? (goalToEdit ? 'Saving...' : 'Adding...') : (goalToEdit ? 'Save Changes' : 'Add Goal')}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

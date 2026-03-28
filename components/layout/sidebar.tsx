@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -9,17 +8,18 @@ import { cn } from '@/lib/utils'
 import { signOut, getUser } from '@/lib/actions/auth'
 import { toast } from 'sonner'
 import { CustomToast } from '@/components/toastMessage'
+import { MenuVertical } from '@/components/menu-vertical'
+import { LogOut, Menu } from 'lucide-react'
 
 const nav = [
-  { href: '/money',  label: 'Money',  icon: '₹' },
-  { href: '/notes',  label: 'Notes',  icon: '📝' },
-  { href: '/todo',   label: 'Todo',   icon: '✓'  },
-  { href: '/habits', label: 'Habits', icon: '🔁' },
-  { href: '/work',   label: 'Work',   icon: '📅' },
+  { href: '/money',  label: 'Money' },
+  { href: '/notes',  label: 'Notes' },
+  { href: '/todo',   label: 'Todo' },
+  { href: '/habits', label: 'Habits' },
+  { href: '/work',   label: 'Work' },
 ]
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname()
   const [userName, setUserName] = useState<string | null>(null)
 
   useEffect(() => {
@@ -49,30 +49,15 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       )}
 
-      <nav className="flex flex-col gap-1 p-4 flex-1">
-        {nav.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-              pathname.startsWith(item.href)
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            )}
-          >
-            <span className="text-base">{item.icon}</span>
-            {item.label}
-          </Link>
-        ))}
+      <nav className="flex flex-col flex-1 overflow-hidden mt-6">
+        <MenuVertical menuItems={nav} onNavigate={onNavigate} />
       </nav>
-      <div className="p-4 border-t">
+      <div className="p-6 border-t">
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="w-full flex items-center gap-3 rounded-lg text-lg font-bold text-zinc-900 dark:text-zinc-50 hover:text-[#ff6900] transition-colors"
         >
-          <span className="text-base">↩</span>
+          <LogOut strokeWidth={2.5} className="size-6" />
           Sign out
         </button>
       </div>
@@ -85,31 +70,29 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile: hamburger + sheet drawer */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center h-14 px-4 border-b bg-background">
+      {/* Mobile/Tablet/Laptop (Drawer): hamburger + sheet drawer */}
+      <div className="xl:hidden fixed top-0 left-0 right-0 z-40 flex items-center h-14 px-4 border-b bg-background">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon">
               <span className="sr-only">Open menu</span>
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M2 4h14M2 9h14M2 14h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
+              <Menu className="size-5" />
             </Button>
           </SheetTrigger>
-          <span className="ml-3 font-semibold text-sm">My App</span>
-          <SheetContent side="left" className="w-64 p-0">
-            <div className="h-14 flex items-center px-4 border-b font-semibold text-sm">
-              My App
+          <span className="ml-3 font-semibold text-sm tracking-wide">MY APP</span>
+          <SheetContent side="left" className="w-full max-w-[350px] p-0">
+            <div className="h-14 flex items-center px-6 border-b font-bold tracking-wider text-sm">
+              MY APP
             </div>
             <NavLinks onNavigate={() => setOpen(false)} />
           </SheetContent>
         </Sheet>
       </div>
 
-      {/* Desktop: permanent sidebar */}
-      <aside className="hidden md:flex flex-col w-56 border-r bg-background shrink-0">
-        <div className="h-14 flex items-center px-4 border-b font-semibold text-sm">
-          My App
+      {/* Desktop (Fixed): permanent sidebar starting from XL screens (1280px+) */}
+      <aside className="hidden xl:flex flex-col w-72 lg:w-80 border-r bg-background shrink-0">
+        <div className="h-14 flex items-center px-6 border-b font-bold tracking-wider text-sm">
+          MY APP
         </div>
         <NavLinks />
       </aside>

@@ -45,6 +45,33 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --component-active-color-default: var(----component-active-color-default);
+  --component-line-inactive-color: var(----component-line-inactive-color);
+  --component-active-bg: var(----component-active-bg);
+  --component-shadow: var(----component-shadow);
+  --component-bg: var(----component-bg);
+  --component-inactive-color: var(----component-inactive-color);
+  --color-color-chart-5: var(----color-chart-5);
+  --color-color-chart-4: var(----color-chart-4);
+  --color-color-chart-3: var(----color-chart-3);
+  --color-color-chart-2: var(----color-chart-2);
+  @keyframes iconBounce {
+  0%, 100% {
+    transform: translateY(0);
+    }
+  20% {
+    transform: translateY(-0.3em);
+    }
+  40% {
+    transform: translateY(0);
+    }
+  60% {
+    transform: translateY(-0.1em);
+    }
+  80% {
+    transform: translateY(0);
+    }
+  }
 }
 
 :root {
@@ -81,6 +108,12 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --component-inactive-color: var(--muted-foreground);
+  --component-bg: var(--card);
+  --component-shadow: var(--border);
+  --component-active-bg: var(--secondary);
+  --component-line-inactive-color: var(--border);
+  --component-active-color-default: var(--accent-foreground);
 }
 
 .dark {
@@ -115,6 +148,12 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --component-inactive-color: var(--muted-foreground);
+  --component-bg: var(--card);
+  --component-shadow: var(--border);
+  --component-active-bg: var(--secondary);
+  --component-line-inactive-color: var(--muted-foreground);
+  --component-active-color-default: var(--accent-foreground);
 }
 
 @layer base {

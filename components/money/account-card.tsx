@@ -167,7 +167,7 @@ export function AccountCard({
       {/* ── CARD (collapsed view) ─────────────────────────────── */}
       <div
         className={`rounded-[12px] transition-all relative overflow-hidden cursor-pointer
-          hover:shadow-lg border ${dark ? 'border-gray-700' : 'border-gray-300'} max-w-[350px] h-[200px]
+          hover:shadow-lg border ${dark ? 'border-gray-700' : 'border-gray-300'} w-full max-w-[450px] h-[200px]
           ${className}`}
         style={{
           background: theme.background,

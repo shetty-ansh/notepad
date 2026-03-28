@@ -7,11 +7,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -23,6 +21,7 @@ import { provisionToGoal } from '@/lib/actions/money'
 import { toast } from 'sonner'
 import { CustomToast } from '@/components/toastMessage'
 import type { Account, Goal } from '@/lib/types'
+import { AddGoalDialog } from '@/components/money/add-goal-dialog'
 
 interface ProvisionDialogProps {
   open: boolean
@@ -37,19 +36,31 @@ export function ProvisionDialog({ open, onOpenChange, goal, accounts, goals, onS
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [amount, setAmount] = useState(0)
+  const [amountStr, setAmountStr] = useState('')
   const [accountId, setAccountId] = useState(accounts[0]?.id || '')
   const [goalId, setGoalId] = useState(goal?.id || '')
+
+  const [showGoalDialog, setShowGoalDialog] = useState(false)
+  const [localGoals, setLocalGoals] = useState<Goal[]>(goals || [])
+
+  useEffect(() => {
+    setLocalGoals(goals || [])
+  }, [goals])
 
   useEffect(() => {
     if (goal) {
       setGoalId(goal.id)
-    } else if (goals && goals.length > 0 && !goalId) {
-      setGoalId(goals[0].id)
+    } else if (localGoals && localGoals.length > 0 && !goalId) {
+      setGoalId(localGoals[0].id)
     }
     if (accounts.length > 0 && !accountId) {
       setAccountId(accounts[0].id)
     }
-  }, [goal, goals, accounts, open])
+    if (open) {
+      setAmountStr('')
+      setAmount(0)
+    }
+  }, [goal, localGoals, accounts, open, goalId, accountId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,12 +68,13 @@ export function ProvisionDialog({ open, onOpenChange, goal, accounts, goals, onS
     try {
       if (!goalId) throw new Error("Please select a goal")
       await provisionToGoal(goalId, amount, accountId)
-      const targetName = goal?.name || goals?.find(g => g.id === goalId)?.name || 'Goal'
+      const targetName = goal?.name || localGoals?.find(g => g.id === goalId)?.name || 'Goal'
       toast.custom(() => (
         <CustomToast type="success" title="Money added" message={`₹${amount.toLocaleString('en-IN')} added to ${targetName}.`} />
       ))
       onOpenChange(false)
       setAmount(0)
+      setAmountStr('')
       onSuccess?.()
       router.refresh()
     } catch (error) {
@@ -80,52 +92,72 @@ export function ProvisionDialog({ open, onOpenChange, goal, accounts, goals, onS
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#FCF9F5] border border-[--border] rounded-[12px] shadow-md p-6 max-w-md">
+      <DialogContent className="bg-[#FCF9F5] border border-gray-200 rounded-[6px] shadow-md p-5 max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base font-medium">
+          <DialogTitle className="text-lg font-bold">
             {goal ? `Add Money to ${goal.name}` : 'Provision Money to Goal'}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!goal && goals && goals.length > 0 && (
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          {!goal && (
             <div>
-              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Target Goal</Label>
-              <Select value={goalId} onValueChange={setGoalId}>
-                <SelectTrigger className="bg-white border-[--border] h-9 text-sm rounded-[8px]">
+              <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Target Goal</label>
+              <Select
+                value={goalId}
+                onValueChange={(value) => {
+                  if (value === '__create_new__') {
+                    setShowGoalDialog(true)
+                  } else {
+                    setGoalId(value)
+                  }
+                }}
+              >
+                <SelectTrigger className="bg-white border-2 border-gray-300 h-9 text-sm rounded-[6px]">
                   <SelectValue placeholder="Select a goal" />
                 </SelectTrigger>
                 <SelectContent>
-                  {goals.map((g) => (
+                  {localGoals.map((g) => (
                     <SelectItem key={g.id} value={g.id}>
                       {g.name}
                     </SelectItem>
                   ))}
+                  <SelectItem value="__create_new__" className="font-semibold text-blue-600">
+                    + Create new goal
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           )}
 
           <div>
-            <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Amount</Label>
+            <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Amount</label>
             <Input
               type="number"
-              step="0.01"
+              step="1"
               min="0"
-              value={amount}
-              onChange={(e) => setAmount(parseFloat(e.target.value))}
-              className="bg-white border-[--border] focus:border-[--border-strong] h-9 text-sm rounded-[8px] font-mono"
+              value={amountStr}
+              onChange={(e) => {
+                setAmountStr(e.target.value)
+                const val = parseInt(e.target.value)
+                setAmount(isNaN(val) ? 0 : val)
+              }}
+              placeholder="0"
+              className="bg-white border-2 border-gray-300 focus:border-black h-9 text-sm rounded-[6px] font-mono"
               required
             />
           </div>
 
           <div>
-            <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Source Account</Label>
+            <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Source Account</label>
             <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger className="bg-white border-[--border] h-9 text-sm rounded-[8px]">
+              <SelectTrigger className="bg-white border-2 border-gray-300 h-9 text-sm rounded-[6px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                {accounts.length === 0 && (
+                  <SelectItem value="__empty__" disabled className="text-gray-400 text-xs">No accounts yet</SelectItem>
+                )}
                 {accounts.map((account) => (
                   <SelectItem key={account.id} value={account.id}>
                     {account.name} (₹{(account.balance || 0).toLocaleString('en-IN')})
@@ -135,25 +167,35 @@ export function ProvisionDialog({ open, onOpenChange, goal, accounts, goals, onS
             </Select>
           </div>
 
-          <DialogFooter className="flex gap-2 justify-end pt-4">
+          <div className="flex gap-2 justify-end pt-2">
             <Button
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="h-8 px-3 text-sm text-red-600 hover:bg-red-600 hover:text-white rounded-[8px]"
+              className="h-8 px-3 text-sm text-red-600 hover:bg-red-600 hover:text-white rounded-[6px]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="bg-black text-white hover:bg-green-900 h-8 px-3 text-sm font-medium rounded-[8px] shadow-none"
+              className="bg-black text-white hover:bg-green-900 h-8 px-4 text-sm font-medium rounded-[6px] shadow-none"
             >
               {loading ? 'Adding...' : 'Add Money'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
+      <AddGoalDialog
+        open={showGoalDialog}
+        onOpenChange={setShowGoalDialog}
+        accounts={accounts}
+        onSuccess={(newGoal: Goal) => {
+          setLocalGoals(prev => [...prev, newGoal])
+          setGoalId(newGoal.id)
+          router.refresh()
+        }}
+      />
     </Dialog>
   )
 }

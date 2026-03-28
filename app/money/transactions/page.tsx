@@ -1,5 +1,7 @@
 'use client'
 
+import Loader from '@/components/loader-animation'
+
 import { useState, useEffect } from 'react'
 import { getAccounts, getTransactions, getGoals, getTransactionCategories } from '@/lib/actions/money'
 import { TransactionRow } from '@/components/money/transaction-row'
@@ -23,29 +25,34 @@ export default function TransactionsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [typeFilter, setTypeFilter] = useState<TransactionType | 'all'>('all')
   const [accountFilter, setAccountFilter] = useState<string>('all')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadData()
   }, [typeFilter, accountFilter])
 
   const loadData = async () => {
-    const [accountsData, goalsData, categoriesData] = await Promise.all([
-      getAccounts(),
-      getGoals(),
-      getTransactionCategories(),
-    ])
-    setAccounts(accountsData)
-    setGoals(goalsData)
-    setCategories(categoriesData)
+    try {
+      const [accountsData, goalsData, categoriesData] = await Promise.all([
+        getAccounts(),
+        getGoals(),
+        getTransactionCategories(),
+      ])
+      setAccounts(accountsData)
+      setGoals(goalsData)
+      setCategories(categoriesData)
 
-    const filters: { accountId?: string; type?: TransactionType } = {}
-    if (accountFilter !== 'all') filters.accountId = accountFilter
-    if (typeFilter !== 'all') filters.type = typeFilter
+      const filters: { accountId?: string; type?: TransactionType } = {}
+      if (accountFilter !== 'all') filters.accountId = accountFilter
+      if (typeFilter !== 'all') filters.type = typeFilter
 
-    const transactionsData = await getTransactions(
-      Object.keys(filters).length > 0 ? filters : undefined
-    )
-    setTransactions(transactionsData)
+      const transactionsData = await getTransactions(
+        Object.keys(filters).length > 0 ? filters : undefined
+      )
+      setTransactions(transactionsData)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const groupTransactionsByDate = (transactions: Transaction[]) => {
@@ -93,6 +100,12 @@ export default function TransactionsPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader />
+          </div>
+        ) : (
+          <>
         {/* Filters */}
         <div className="flex gap-3 mb-6">
           <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as TransactionType | 'all')}>
@@ -165,8 +178,9 @@ export default function TransactionsPage() {
             ))}
           </div>
         )}
+          </>
+        )}
       </div>
-
       <AddTransactionDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}

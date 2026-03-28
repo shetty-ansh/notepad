@@ -1,5 +1,7 @@
 'use client'
 
+import Loader from '@/components/loader-animation'
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -25,20 +27,25 @@ export default function BillsPage() {
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [billDialogOpen, setBillDialogOpen] = useState(false)
   const [editingBill, setEditingBill] = useState<Bill | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadData()
   }, [])
 
   const loadData = async () => {
-    const [accountsData, billsData, remindersData] = await Promise.all([
-      getAccounts(),
-      getBills(),
-      getReminders(),
-    ])
-    setAccounts(accountsData)
-    setBills(billsData)
-    setReminders(remindersData)
+    try {
+      const [accountsData, billsData, remindersData] = await Promise.all([
+        getAccounts(),
+        getBills(),
+        getReminders(),
+      ])
+      setAccounts(accountsData)
+      setBills(billsData)
+      setReminders(remindersData)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleMarkPaid = async (billId: string) => {
@@ -118,6 +125,12 @@ export default function BillsPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader />
+          </div>
+        ) : (
+        <>
         {/* Bills Section */}
         <div>
           <h2 className="text-[11px] font-medium uppercase tracking-wider text-[--text-secondary] mb-3">
@@ -142,7 +155,7 @@ export default function BillsPage() {
               </Button>
             </div>
           ) : (
-            <div className="bg-[--card] border border-[--border] rounded-[--radius-lg] p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {bills.map((bill) => {
                 const account = accounts.find(
                   (acc) => acc.id === bill.account_id
@@ -181,6 +194,8 @@ export default function BillsPage() {
               })}
             </div>
           </div>
+        )}
+        </>
         )}
       </div>
 

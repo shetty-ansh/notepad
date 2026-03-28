@@ -1,5 +1,7 @@
 'use client'
 
+
+import Loader from '@/components/loader-animation'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getLedger, settleLedgerEntry, deleteLedgerEntry } from '@/lib/actions/money'
@@ -17,14 +19,19 @@ export default function LedgerPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [settledOpen, setSettledOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<Ledger | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadData()
   }, [])
 
   const loadData = async () => {
-    const data = await getLedger()
-    setEntries(data)
+    try {
+      const data = await getLedger()
+      setEntries(data)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSettle = async (id: string) => {
@@ -117,7 +124,11 @@ export default function LedgerPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-6">
-        {entries.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader />
+          </div>
+        ) : entries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-sm font-medium text-[--text-secondary]">
               No ledger entries yet
@@ -146,18 +157,17 @@ export default function LedgerPage() {
                   </p>
                 </div>
               ) : (
-                <div className="bg-[--card] border border-[--border] rounded-[--radius-lg] p-4">
-                  {iOweEntries.map((entry) => (
-                    <LedgerRow
-                      key={entry.id}
-                      entry={entry}
-                      onSettle={() => handleSettle(entry.id)}
-                      onEdit={() => handleEdit(entry)}
-                      onDelete={() => handleDelete(entry.id)}
-                    />
-                  ))}
-                </div>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {iOweEntries.map((entry) => (
+              <LedgerRow
+                key={entry.id}
+                entry={entry}
+                onSettle={() => handleSettle(entry.id)}
+                onEdit={() => handleEdit(entry)}
+                onDelete={() => handleDelete(entry.id)}
+              />
+            ))}
+          </div>              )}
             </div>
 
             {/* They Owe Me Section */}
@@ -172,18 +182,17 @@ export default function LedgerPage() {
                   </p>
                 </div>
               ) : (
-                <div className="bg-[--card] border border-[--border] rounded-[--radius-lg] p-4">
-                  {theyOweEntries.map((entry) => (
-                    <LedgerRow
-                      key={entry.id}
-                      entry={entry}
-                      onSettle={() => handleSettle(entry.id)}
-                      onEdit={() => handleEdit(entry)}
-                      onDelete={() => handleDelete(entry.id)}
-                    />
-                  ))}
-                </div>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {theyOweEntries.map((entry) => (
+              <LedgerRow
+                key={entry.id}
+                entry={entry}
+                onSettle={() => handleSettle(entry.id)}
+                onEdit={() => handleEdit(entry)}
+                onDelete={() => handleDelete(entry.id)}
+              />
+            ))}
+          </div>              )}
             </div>
           </div>
         )}
@@ -201,7 +210,7 @@ export default function LedgerPage() {
               Settled ({settledEntries.length})
             </button>
             {settledOpen && (
-              <div className="bg-[--card] border border-[--border] rounded-[--radius-lg] p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {settledEntries.map((entry) => (
                   <LedgerRow
                     key={entry.id}

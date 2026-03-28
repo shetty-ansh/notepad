@@ -88,25 +88,25 @@ export function CreateCategoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#FCF9F5] border border-[--border] rounded-[12px] shadow-md p-6 max-w-sm">
+      <DialogContent className="bg-[#FCF9F5] border border-gray-200 rounded-[6px] shadow-md p-5 max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-base font-medium">Create Category</DialogTitle>
+          <DialogTitle className="text-lg font-bold">Create Category</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div>
-            <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Category Name</Label>
+            <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Category Name</label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="bg-white border-[--border] focus:border-[--border-strong] h-9 text-sm rounded-[8px]"
+              className="bg-white border-2 border-gray-300 focus:border-black h-9 text-sm rounded-[6px]"
               required
               placeholder="e.g. Groceries"
             />
           </div>
 
           <div>
-            <Label className="text-xs font-medium text-[--text-secondary] mb-2 block">Icon</Label>
+            <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Icon</label>
             <div className="grid grid-cols-5 gap-2 h-32 overflow-y-auto p-1">
               {PRESET_ICONS.map((iconName) => {
                 const IconComponent = (LucideIcons as any)[iconName]
@@ -129,7 +129,7 @@ export function CreateCategoryDialog({
           </div>
 
           <div>
-            <Label className="text-xs font-medium text-[--text-secondary] mb-2 block">Color</Label>
+            <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Color</label>
             <div className="flex flex-wrap gap-2">
               {PRESET_COLORS.map((c) => (
                 <button
@@ -145,7 +145,7 @@ export function CreateCategoryDialog({
             </div>
           </div>
 
-          <div className="mt-4 p-3 bg-white border border-[--border] rounded-[8px] flex items-center gap-3">
+          <div className="mt-4 p-3 bg-white border-2 border-gray-300 rounded-[6px] flex items-center gap-3">
             <span className="text-xs font-medium text-[--text-secondary]">Preview:</span>
             <div className="flex items-center gap-2">
               <div 
@@ -158,23 +158,23 @@ export function CreateCategoryDialog({
             </div>
           </div>
 
-          <DialogFooter className="flex gap-2 justify-end pt-4">
+          <div className="flex gap-2 justify-end pt-2">
             <Button
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="h-8 px-3 text-sm text-red-600 hover:bg-red-600 hover:text-white rounded-[8px]"
+              className="h-8 px-3 text-sm text-red-600 hover:bg-red-600 hover:text-white rounded-[6px]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading || !name.trim()}
-              className="bg-black text-white hover:bg-green-900 h-8 px-3 text-sm font-medium rounded-[8px] shadow-none"
+              className="bg-black text-white hover:bg-green-900 h-8 px-4 text-sm font-medium rounded-[6px] shadow-none"
             >
               {loading ? 'Creating...' : 'Create'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

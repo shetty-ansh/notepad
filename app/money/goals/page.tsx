@@ -1,5 +1,7 @@
 'use client'
 
+import Loader from '@/components/loader-animation'
+
 import { useState, useEffect } from 'react'
 import { getAccounts, getGoals, deleteGoal } from '@/lib/actions/money'
 import { toast } from 'sonner'
@@ -18,18 +20,23 @@ export default function GoalsPage() {
   const [provisionDialogOpen, setProvisionDialogOpen] = useState(false)
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadData()
   }, [])
 
   const loadData = async () => {
-    const [accountsData, goalsData] = await Promise.all([
-      getAccounts(),
-      getGoals(),
-    ])
-    setAccounts(accountsData)
-    setGoals(goalsData)
+    try {
+      const [accountsData, goalsData] = await Promise.all([
+        getAccounts(),
+        getGoals(),
+      ])
+      setAccounts(accountsData)
+      setGoals(goalsData)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleProvision = (goal: Goal) => {
@@ -84,7 +91,11 @@ export default function GoalsPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-6">
-        {goals.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader />
+          </div>
+        ) : goals.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-sm font-medium text-[--text-secondary]">
               No goals yet

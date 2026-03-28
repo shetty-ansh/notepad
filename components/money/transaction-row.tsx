@@ -84,9 +84,9 @@ export function TransactionRow({ transaction, account, colour, icon, onEdit, onD
                 {account.name}
               </span>
             )}
-            {transaction.txn_date && (
+            {(transaction as any).created_at && (
               <span className="text-[10px] font-bold uppercase tracking-widest text-black bg-white px-2.5 py-1 rounded-[6px]">
-                {formatDate(transaction.txn_date)}
+                {new Date((transaction as any).created_at).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true })}
               </span>
             )}
           </div>

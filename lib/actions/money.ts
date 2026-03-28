@@ -206,6 +206,9 @@ export async function addTransaction(transactionData: NewTransaction): Promise<T
   if (transactionData.type === 'income') {
     newBalance += transactionData.amount
   } else if (transactionData.type === 'expense') {
+    if (transactionData.amount > newBalance) {
+      throw new Error(`Insufficient funds: Cannot spend more than account balance (₹${newBalance.toLocaleString('en-IN')})`)
+    }
     newBalance -= transactionData.amount
   }
 
@@ -244,6 +247,84 @@ export async function addTransaction(transactionData: NewTransaction): Promise<T
 
   await resolveProvisionShortfall(transactionData.account_id, userId, supabase)
   return transaction
+}
+
+export async function transferMoney(
+  fromAccountId: string,
+  toAccountId: string,
+  amount: number,
+  description: string,
+  txnDate: string
+): Promise<void> {
+  if (fromAccountId === toAccountId) throw new Error('Source and destination accounts must be different')
+  if (amount <= 0) throw new Error('Amount must be greater than 0')
+
+  const supabase = await createClient()
+  const userId = await getUserId()
+
+  // Get both accounts
+  const { data: fromAccount, error: fromErr } = await supabase
+    .from('accounts')
+    .select('balance, name')
+    .eq('id', fromAccountId)
+    .eq('user_id', userId)
+    .single()
+  if (fromErr || !fromAccount) throw new Error('Source account not found')
+
+  const { data: toAccount, error: toErr } = await supabase
+    .from('accounts')
+    .select('balance, name')
+    .eq('id', toAccountId)
+    .eq('user_id', userId)
+    .single()
+  if (toErr || !toAccount) throw new Error('Destination account not found')
+
+  if (amount > (fromAccount.balance ?? 0)) {
+    throw new Error(`Insufficient funds: Cannot transfer more than source balance (₹${(fromAccount.balance ?? 0).toLocaleString('en-IN')})`)
+  }
+
+  const transferDesc = description || `Transfer: ${fromAccount.name} → ${toAccount.name}`
+
+  // Create debit transaction (from source)
+  await supabase
+    .from('transactions')
+    .insert({
+      account_id: fromAccountId,
+      amount,
+      type: 'transfer',
+      category: 'Transfer',
+      description: transferDesc,
+      txn_date: txnDate,
+      user_id: userId,
+    })
+
+  // Create credit transaction (to destination)
+  await supabase
+    .from('transactions')
+    .insert({
+      account_id: toAccountId,
+      amount,
+      type: 'transfer',
+      category: 'Transfer',
+      description: transferDesc,
+      txn_date: txnDate,
+      user_id: userId,
+    })
+
+  // Update balances
+  await supabase
+    .from('accounts')
+    .update({ balance: (fromAccount.balance ?? 0) - amount })
+    .eq('id', fromAccountId)
+    .eq('user_id', userId)
+
+  await supabase
+    .from('accounts')
+    .update({ balance: (toAccount.balance ?? 0) + amount })
+    .eq('id', toAccountId)
+    .eq('user_id', userId)
+
+  await resolveProvisionShortfall(fromAccountId, userId, supabase)
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
@@ -377,6 +458,71 @@ export async function updateTransaction(id: string, updateData: Partial<NewTrans
   }
 
   return newTx
+}
+
+export async function processRecurringTransactions(): Promise<void> {
+  const supabase = await createClient()
+  let userId: string
+  try {
+    userId = await getUserId()
+  } catch {
+    return // Not authenticated
+  }
+  
+  const today = new Date().toISOString().split('T')[0]
+
+  const { data: recurringTxns, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_recurring', true)
+    .lte('next_recurrence_date', today)
+
+  if (error || !recurringTxns || recurringTxns.length === 0) return
+
+  for (const txn of recurringTxns) {
+    const newTxnData = {
+      account_id: txn.account_id || '',
+      amount: txn.amount,
+      category: txn.category || '',
+      description: txn.description || '',
+      goal_id: txn.goal_id,
+      type: txn.type,
+      txn_date: txn.next_recurrence_date || today,
+      is_recurring: false,
+      recurrence_interval: null,
+      next_recurrence_date: null
+    }
+
+    try {
+      await addTransaction(newTxnData)
+      
+      let nextDate = new Date(txn.next_recurrence_date || today)
+      switch (txn.recurrence_interval) {
+        case 'daily':
+          nextDate.setDate(nextDate.getDate() + 1)
+          break
+        case 'weekly':
+          nextDate.setDate(nextDate.getDate() + 7)
+          break
+        case 'monthly':
+          nextDate.setMonth(nextDate.getMonth() + 1)
+          break
+        case 'yearly':
+          nextDate.setFullYear(nextDate.getFullYear() + 1)
+          break
+      }
+
+      await supabase
+        .from('transactions')
+        .update({ next_recurrence_date: nextDate.toISOString().split('T')[0] })
+        .eq('id', txn.id)
+        .eq('user_id', userId)
+
+    } catch (e) {
+      console.error(`Failed to process recurring transaction ${txn.id}:`, e)
+    }
+  }
 }
 
 // ============================================================================

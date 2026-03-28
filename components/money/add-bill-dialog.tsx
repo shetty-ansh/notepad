@@ -7,11 +7,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -35,6 +33,7 @@ interface AddBillDialogProps {
 export function AddBillDialog({ open, onOpenChange, accounts, billToEdit, onSuccess }: AddBillDialogProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [amountStr, setAmountStr] = useState('')
   const [formData, setFormData] = useState<NewBill>({
     name: '',
     amount: 0,
@@ -58,6 +57,7 @@ export function AddBillDialog({ open, onOpenChange, accounts, billToEdit, onSucc
         auto_pay: billToEdit.auto_pay,
         is_active: billToEdit.is_active,
       })
+      setAmountStr(billToEdit.amount ? String(billToEdit.amount) : '')
     } else if (!open) {
       setFormData({
         name: '',
@@ -69,6 +69,7 @@ export function AddBillDialog({ open, onOpenChange, accounts, billToEdit, onSucc
         auto_pay: false,
         is_active: true,
       })
+      setAmountStr('')
     }
   }, [billToEdit, open, accounts])
 
@@ -105,85 +106,101 @@ export function AddBillDialog({ open, onOpenChange, accounts, billToEdit, onSucc
     }
   }
 
+  const frequencies: { value: BillFrequency; label: string }[] = [
+    { value: 'monthly', label: 'Monthly' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'yearly', label: 'Yearly' },
+    { value: 'once', label: 'Once' },
+  ]
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#FCF9F5] border border-[--border] rounded-[12px] shadow-md p-6 max-w-md">
+      <DialogContent className="bg-[#FCF9F5] border border-gray-200 rounded-[6px] shadow-md p-5 max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base font-medium">{billToEdit ? 'Edit Bill' : 'Add Bill'}</DialogTitle>
+          <DialogTitle className="text-lg font-bold">{billToEdit ? 'Edit Bill' : 'Add Bill'}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex gap-4">
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div className="flex gap-3">
             <div className="flex-1">
-              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Name</Label>
+              <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Name</label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="bg-white border-[--border] focus:border-[--border-strong] h-9 text-sm rounded-[8px]"
+                placeholder="e.g. Netflix"
+                className="bg-white border-2 border-gray-300 focus:border-black h-9 text-sm rounded-[6px]"
                 required
               />
             </div>
             <div className="flex-1">
-              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Category</Label>
+              <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Category</label>
               <Input
                 value={formData.category || ''}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="bg-white border-[--border] focus:border-[--border-strong] h-9 text-sm rounded-[8px]"
+                placeholder="e.g. Subscription"
+                className="bg-white border-2 border-gray-300 focus:border-black h-9 text-sm rounded-[6px]"
                 required
               />
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <div className="flex-1">
-              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Amount</Label>
+              <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Amount</label>
               <Input
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
-                value={formData.amount || 0}
-                onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
-                className="bg-white border-[--border] focus:border-[--border-strong] h-9 text-sm rounded-[8px] font-mono"
+                value={amountStr}
+                onChange={(e) => {
+                  setAmountStr(e.target.value)
+                  const val = parseInt(e.target.value)
+                  setFormData({ ...formData, amount: isNaN(val) ? 0 : val })
+                }}
+                placeholder="0"
+                className="bg-white border-2 border-gray-300 focus:border-black h-9 text-sm rounded-[6px] font-mono"
                 required
               />
             </div>
             <div className="flex-1">
-              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Frequency</Label>
-              <Select
-                value={formData.frequency || 'monthly'}
-                onValueChange={(value) => setFormData({ ...formData, frequency: value as BillFrequency })}
-              >
-                <SelectTrigger className="bg-white border-[--border] h-9 text-sm rounded-[8px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                  <SelectItem value="once">Once</SelectItem>
-                </SelectContent>
-              </Select>
+              <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Frequency</label>
+              <div className="flex bg-gray-100 rounded-[6px] p-0.5 gap-0.5">
+                {frequencies.map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, frequency: f.value })}
+                    className={`flex-1 px-1 py-1.5 text-[10px] font-medium rounded-[4px] transition-all ${
+                      formData.frequency === f.value
+                        ? 'bg-black text-white shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <div className="flex-1">
-              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Next Due Date</Label>
+              <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Next Due Date</label>
               <Input
                 type="date"
                 value={formData.next_due_date || ''}
                 onChange={(e) => setFormData({ ...formData, next_due_date: e.target.value })}
-                className="bg-white border-[--border] focus:border-[--border-strong] h-9 text-sm rounded-[8px]"
+                className="bg-white border-2 border-gray-300 focus:border-black h-9 text-sm rounded-[6px]"
                 required
               />
             </div>
             <div className="flex-1">
-              <Label className="text-xs font-medium text-[--text-secondary] mb-1 block">Account</Label>
+              <label className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary] mb-1.5 block">Account</label>
               <Select
                 value={formData.account_id || 'none'}
                 onValueChange={(value) => setFormData({ ...formData, account_id: value === 'none' ? null : value })}
               >
-                <SelectTrigger className="bg-white border-[--border] h-9 text-sm rounded-[8px]">
+                <SelectTrigger className="bg-white border-2 border-gray-300 h-9 text-sm rounded-[6px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -202,30 +219,30 @@ export function AddBillDialog({ open, onOpenChange, accounts, billToEdit, onSucc
               id="auto_pay"
               checked={formData.auto_pay || false}
               onChange={(e) => setFormData({ ...formData, auto_pay: e.target.checked })}
-              className="w-4 h-4 rounded border-[--border]"
+              className="w-4 h-4 rounded border-2 border-gray-300 accent-black"
             />
-            <Label htmlFor="auto_pay" className="text-xs font-medium text-[--text-secondary]">
+            <label htmlFor="auto_pay" className="text-[10px] font-medium uppercase tracking-wider text-[--text-secondary]">
               Auto Pay
-            </Label>
+            </label>
           </div>
 
-          <DialogFooter className="flex gap-2 justify-end pt-4">
+          <div className="flex gap-2 justify-end pt-2">
             <Button
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="h-8 px-3 text-sm text-red-600 hover:bg-red-600 hover:text-white rounded-[8px]"
+              className="h-8 px-3 text-sm text-red-600 hover:bg-red-600 hover:text-white rounded-[6px]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="bg-black text-white hover:bg-green-900 h-8 px-3 text-sm font-medium rounded-[8px] shadow-none"
+              className="bg-black text-white hover:bg-green-900 h-8 px-4 text-sm font-medium rounded-[6px] shadow-none"
             >
               {loading ? (billToEdit ? 'Saving...' : 'Adding...') : (billToEdit ? 'Save Changes' : 'Add Bill')}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
