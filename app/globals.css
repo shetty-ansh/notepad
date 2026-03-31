@@ -75,8 +75,8 @@
 }
 
 :root {
-  --background: #FCF9F5;
-  --main-accent:#FCF9F5;
+  --background: #efe9d3;
+  --main-accent:#efe9d3;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);

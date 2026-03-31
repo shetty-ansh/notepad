@@ -28,6 +28,7 @@ export type LedgerDirection = 'i_owe' | 'they_owe'
 export type LedgerStatus = 'pending' | 'settled'
 export type TodoStatus = 'todo' | 'in_progress' | 'done'
 export type TodoType = 'task' | 'goal'
+export type GoalPeriod = 'weekly' | 'monthly' | 'quarterly' | 'long_term_custom'
 export type Priority = 'low' | 'medium' | 'high'
 export type Section = 'general' | 'money' | 'work' | 'habits'
 export type BillFrequency = 'monthly' | 'weekly' | 'yearly' | 'once'
@@ -44,4 +45,4 @@ export type NewTransactionCategory = Omit<TransactionCategory, 'id' | 'created_a
 export type TransactionFilters = {
   accountId?: string
   type?: TransactionType
-}
+}

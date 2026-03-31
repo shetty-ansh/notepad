@@ -16,7 +16,20 @@ export async function signUp(email: string, password: string, name: string) {
 export async function signIn(email: string, password: string) {
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) throw new Error(error.message)
+  if (error) {
+    const normalizedMessage = error.message.toLowerCase()
+    const isInvalidCredentials =
+      normalizedMessage.includes('invalid login credentials') ||
+      normalizedMessage.includes('invalid credentials')
+
+    return {
+      ok: false as const,
+      errorCode: isInvalidCredentials ? 'INVALID_CREDENTIALS' : 'UNKNOWN',
+      message: error.message,
+    }
+  }
+
+  return { ok: true as const }
 }
 
 export async function signOut() {

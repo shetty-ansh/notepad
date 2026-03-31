@@ -33,7 +33,21 @@ export default function LoginPage() {
         ))
         setMode('login')
       } else {
-        await signIn(email, password)
+        const result = await signIn(email, password)
+        if (!result.ok) {
+          toast.custom(() => (
+            <CustomToast
+              type="error"
+              title="Login failed"
+              message={
+                result.errorCode === 'INVALID_CREDENTIALS'
+                  ? 'Wrong email or password. Please try again.'
+                  : result.message || 'Something went wrong'
+              }
+            />
+          ))
+          return
+        }
         router.push('/money')
         router.refresh()
       }
