@@ -13,6 +13,7 @@ import {
   Target,
   Trash2,
   Pencil,
+  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -59,6 +60,7 @@ type GoalFormState = {
   priority: Priority
   dueDate: Date | null
   goalPeriod: GoalPeriod
+  subGoals: string[]
 }
 
 const defaultTodoForm: TodoFormState = {
@@ -72,6 +74,7 @@ const defaultGoalForm: GoalFormState = {
   priority: 'medium',
   dueDate: null,
   goalPeriod: 'weekly',
+  subGoals: [],
 }
 
 function toDateInput(dateStr?: string | null): Date | null {
@@ -118,6 +121,8 @@ export default function TodoPage() {
   const [editingGoal, setEditingGoal] = useState<Todo | null>(null)
   const [todoForm, setTodoForm] = useState<TodoFormState>(defaultTodoForm)
   const [goalForm, setGoalForm] = useState<GoalFormState>(defaultGoalForm)
+  const [selectedGoal, setSelectedGoal] = useState<Todo | null>(null)
+  const [subGoals, setSubGoals] = useState<Todo[]>([])
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [inlineDraft, setInlineDraft] = useState<Record<string, string>>({})
   const [activeInlineDate, setActiveInlineDate] = useState<string | null>(null)
@@ -136,7 +141,10 @@ export default function TodoPage() {
     try {
       const [todoRows, goalRows] = await Promise.all([getTodosByType('task'), getTodosByType('goal')])
       setTodos(todoRows)
-      setGoals(goalRows)
+      // Filter out sub-goals from main goals list
+      const mainGoals = goalRows.filter(g => !g.goal_meta || !(g.goal_meta as { parent_id?: string }).parent_id)
+      setGoals(mainGoals)
+      setSubGoals(goalRows.filter(g => g.goal_meta && (g.goal_meta as { parent_id?: string }).parent_id))
     } catch (error) {
       showToast('error', 'Failed to load', error instanceof Error ? error.message : 'Something went wrong')
     } finally {
@@ -220,12 +228,14 @@ export default function TodoPage() {
 
   const openEditGoalDialog = (goal: Todo) => {
     setEditingGoal(goal)
+    const goalSubGoals = subGoals.filter(sg => (sg.goal_meta as { parent_id?: string })?.parent_id === goal.id)
     setGoalForm({
       title: goal.title,
       status: (goal.status as TodoStatus) ?? 'todo',
       priority: (goal.priority as Priority) ?? 'medium',
       dueDate: toDateInput(goal.due_date),
       goalPeriod: (goal.goal_period as GoalPeriod) ?? 'weekly',
+      subGoals: goalSubGoals.map(sg => sg.title),
     })
     setGoalDialogOpen(true)
   }
@@ -292,6 +302,7 @@ export default function TodoPage() {
         }
         setGoals((prev) => prev.map((g) => (g.id === optimistic.id ? optimistic : g)))
         setGoalDialogOpen(false)
+        
         await updateTodo(editingGoal.id, {
           title: optimistic.title,
           status: optimistic.status as TodoStatus,
@@ -299,18 +310,53 @@ export default function TodoPage() {
           due_date: optimistic.due_date,
           goal_period: optimistic.goal_period as GoalPeriod,
         })
+
+        // Handle sub-goals
+        const existingSubGoals = subGoals.filter(sg => (sg.goal_meta as { parent_id?: string })?.parent_id === editingGoal.id)
+        const existingTitles = existingSubGoals.map(sg => sg.title)
+        const newSubGoalTitles = goalForm.subGoals.filter(title => !existingTitles.includes(title))
+        
+        // Create new sub-goals
+        for (const title of newSubGoalTitles) {
+          const created = await createTodo({
+            title,
+            type: 'goal',
+            status: 'todo',
+            priority: goalForm.priority,
+            goal_period: goalForm.goalPeriod,
+            goal_meta: { parent_id: editingGoal.id },
+          })
+          setSubGoals(prev => [...prev, created])
+        }
+
         showToast('success', 'Goal updated', 'Your goal was updated successfully.')
         setEditingGoal(null)
       } else {
         const created = await createTodo({
           title: goalForm.title.trim(),
           type: 'goal',
-          status: goalForm.status,
+          status: 'todo',
           priority: goalForm.priority,
           due_date: toDateString(goalForm.dueDate),
           goal_period: goalForm.goalPeriod,
         })
         setGoals((prev) => [created, ...prev])
+
+        // Create sub-goals
+        for (const subGoalTitle of goalForm.subGoals) {
+          if (subGoalTitle.trim()) {
+            const subGoal = await createTodo({
+              title: subGoalTitle.trim(),
+              type: 'goal',
+              status: 'todo',
+              priority: goalForm.priority,
+              goal_period: goalForm.goalPeriod,
+              goal_meta: { parent_id: created.id },
+            })
+            setSubGoals(prev => [...prev, subGoal])
+          }
+        }
+
         setGoalDialogOpen(false)
         showToast('success', 'Goal created', 'A new goal has been added.')
       }
@@ -339,8 +385,16 @@ export default function TodoPage() {
 
   const onTogglePin = (item: Todo) => {
     const nextPinned = !item.is_pinned
-    const updateLocal = (list: Todo[]) =>
-      list.map((x) => (x.id === item.id ? { ...x, is_pinned: nextPinned } : x))
+    const updateLocal = (list: Todo[]) => {
+      const updated = list.map((x) => (x.id === item.id ? { ...x, is_pinned: nextPinned } : x))
+      // Re-sort by pinned status and creation date
+      return updated.sort((a, b) => {
+        if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1
+        const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0
+        const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0
+        return bCreated - aCreated
+      })
+    }
     if (item.type === 'goal') setGoals((prev) => updateLocal(prev))
     else setTodos((prev) => updateLocal(prev))
     toggleTodoPin(item.id, nextPinned)
@@ -506,15 +560,15 @@ export default function TodoPage() {
                 <div className="rounded-lg border bg-card p-4">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div>
-                      <div className="text-lg font-semibold">Weekly ToDo List</div>
-                      <div className="mt-1 text-2xl sm:text-3xl font-bold">
+                      <div className="text-lg font-bold">Weekly ToDo List</div>
+                      <div className="mt-1 text-2xl sm:text-3xl font-bold text-[#de6536]">
                         {format(weekStart, 'MMM d')} - {format(addDays(weekStart, 6), 'MMM d')}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button className="rounded-[4px] py-2 px-4 font-semibold bg-white text-black shadow" onClick={() => setWeekStart((d) => addDays(d, -7))}>Prev</Button>
-                      <Button className="rounded-[4px] py-2 px-4 font-semibold bg-white text-black shadow" onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>This week</Button>
-                      <Button className="rounded-[4px] py-2 px-4 font-semibold bg-white text-black shadow" onClick={() => setWeekStart((d) => addDays(d, 7))}>Next</Button>
+                      <Button className="rounded-[4px] py-2 px-4 font-semibold bg-white text-black shadow hover:bg-[#de6536]/40" onClick={() => setWeekStart((d) => addDays(d, -7))}>Prev</Button>
+                      <Button className="rounded-[4px] py-2 px-4 font-semibold bg-white text-black shadow hover:bg-[#de6536]/40" onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>This week</Button>
+                      <Button className="rounded-[4px] py-2 px-4 font-semibold bg-white text-black shadow hover:bg-[#de6536]/40" onClick={() => setWeekStart((d) => addDays(d, 7))}>Next</Button>
                     </div>
                   </div>
 
@@ -532,8 +586,8 @@ export default function TodoPage() {
 
                       return (
                         <div key={key}>
-                          <div className="h-9 rounded-md bg-muted/60 flex items-center px-3 font-semibold">
-                            {format(day, 'EEE')}
+                          <div className="h-10 rounded-md bg-muted/80 flex items-center px-3 font-bold">
+                          <span className='text-black font-bold text-2xl'>{format(day, 'EEE')}</span>
                           </div>
 
                           <div className="mt-2 space-y-2">
@@ -619,16 +673,47 @@ export default function TodoPage() {
           ) : filteredGoals.length === 0 ? (
             <div className="text-sm text-muted-foreground">No goals found for selected filters.</div>
           ) : (
-            filteredGoals.map((item) => (
-              <GoalCardRow
-                key={item.id}
-                item={item}
-                onEdit={() => openEditGoalDialog(item)}
-                onDelete={() => onDelete(item)}
-                onTogglePin={() => onTogglePin(item)}
-                onToggleStatus={() => onToggleStatus(item)}
-              />
-            ))
+            <>
+              {(['weekly', 'monthly', 'quarterly', 'long_term_custom'] as const).map((period) => {
+                const periodGoals = filteredGoals.filter(g => g.goal_period === period)
+                if (periodGoals.length === 0 && goalFilter !== 'all') return null
+                
+                return (
+                  <div key={period} className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-black">
+                        {toTitle(period as GoalPeriod)}
+                      </h2>
+                      <Button
+                        onClick={() => {
+                          setGoalForm({ ...defaultGoalForm, goalPeriod: period as GoalPeriod })
+                          openNewGoalDialog()
+                        }}
+                        className="bg-[#de6536] text-white hover:bg-[#c55530] h-8 px-3 text-xs font-bold rounded-[6px] shadow-none"
+                      >
+                        <Plus className="size-3 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                    
+                    {periodGoals.length === 0 ? (
+                      <div className="text-sm text-muted-foreground italic">No {period} goals yet</div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {periodGoals.map((item) => (
+                          <GoalSquareCard
+                            key={item.id}
+                            item={item}
+                            subGoals={subGoals.filter(sg => (sg.goal_meta as { parent_id?: string })?.parent_id === item.id)}
+                            onClick={() => setSelectedGoal(item)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </>
           )}
         </div >
 
@@ -669,6 +754,48 @@ export default function TodoPage() {
         onSubmit={submitGoal}
         isEdit={Boolean(editingGoal)}
       />
+
+      {selectedGoal && (
+        <GoalDetailModal
+          goal={selectedGoal}
+          subGoals={subGoals.filter(sg => (sg.goal_meta as { parent_id?: string })?.parent_id === selectedGoal.id)}
+          onClose={() => setSelectedGoal(null)}
+          onEdit={() => {
+            openEditGoalDialog(selectedGoal)
+            setSelectedGoal(null)
+          }}
+          onDelete={() => {
+            onDelete(selectedGoal)
+            setSelectedGoal(null)
+          }}
+          onToggleSubGoal={async (subGoal) => {
+            const nextStatus: TodoStatus = subGoal.status === 'done' ? 'todo' : 'done'
+            setSubGoals(prev => prev.map(sg => sg.id === subGoal.id ? { ...sg, status: nextStatus } : sg))
+            
+            try {
+              await toggleTodoStatus(subGoal.id, nextStatus)
+              
+              // Check if all sub-goals are done
+              const updatedSubGoals = subGoals.map(sg => sg.id === subGoal.id ? { ...sg, status: nextStatus } : sg)
+              const allDone = updatedSubGoals.every(sg => sg.status === 'done')
+              
+              if (allDone && selectedGoal.status !== 'done') {
+                await toggleTodoStatus(selectedGoal.id, 'done')
+                setGoals(prev => prev.map(g => g.id === selectedGoal.id ? { ...g, status: 'done' } : g))
+                setSelectedGoal({ ...selectedGoal, status: 'done' })
+                showToast('success', 'Goal completed!', 'All sub-goals are done.')
+              } else if (!allDone && selectedGoal.status === 'done') {
+                await toggleTodoStatus(selectedGoal.id, 'todo')
+                setGoals(prev => prev.map(g => g.id === selectedGoal.id ? { ...g, status: 'todo' } : g))
+                setSelectedGoal({ ...selectedGoal, status: 'todo' })
+              }
+            } catch (error) {
+              await loadData()
+              showToast('error', 'Update failed', error instanceof Error ? error.message : 'Something went wrong')
+            }
+          }}
+        />
+      )}
     </div >
   )
 }
@@ -734,40 +861,100 @@ function GoalCardRow({
   onToggleStatus: () => void
 }) {
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <Target className="size-4 text-indigo-500" />
-            <p className="font-medium">{item.title}</p>
-            {item.is_pinned ? <Pin className="size-4 text-amber-500" /> : null}
-          </div>
-          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-            {statusBadge((item.status as TodoStatus) ?? 'todo')}
-            <Badge variant="outline">{toTitle(((item.goal_period as GoalPeriod) ?? 'weekly'))}</Badge>
-            <Badge variant="outline">
-              <Flag className="size-3 mr-1" />
-              {item.priority ?? 'medium'}
-            </Badge>
-            {item.due_date ? <span>Target: {item.due_date}</span> : null}
-          </div>
+    <div className="border border-grey-900 border-2 rounded-[6px] p-4 cursor-pointer hover:shadow-md transition-all">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Target className="size-5 text-indigo-500" />
+          <h3 className="text-base md:text-2xl font-bold text-black truncate">
+            {item.title}
+          </h3>
         </div>
-        <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" onClick={onToggleStatus}>
-            {item.status === 'done' ? <Check className="size-4" /> : <Circle className="size-4" />}
+        <div className="flex items-center gap-1 sm:gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleStatus}
+            className="text-black hover:text-white hover:bg-black p-2 rounded-full"
+            title={item.status === 'done' ? 'Mark as to do' : 'Mark as done'}
+          >
+            {item.status === 'done' ? <Check className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
           </Button>
-          <Button size="icon" variant="ghost" onClick={onTogglePin}>
-            {item.is_pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onTogglePin}
+            className="text-black hover:text-white hover:bg-black p-2 rounded-full"
+            title={item.is_pinned ? 'Unpin' : 'Pin'}
+          >
+            {item.is_pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
           </Button>
-          <Button size="icon" variant="ghost" onClick={onEdit}>
-            <Pencil className="size-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onEdit}
+            className="text-black hover:text-white hover:bg-black p-2 rounded-full"
+            title="Edit"
+          >
+            <Pencil className="w-3.5 h-3.5" />
           </Button>
-          <Button size="icon" variant="ghost" onClick={onDelete}>
-            <Trash2 className="size-4 text-red-600" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onDelete}
+            className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-full"
+            title="Delete"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
       </div>
+
+      <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm">
+        {statusBadge((item.status as TodoStatus) ?? 'todo')}
+        <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+          {toTitle(((item.goal_period as GoalPeriod) ?? 'weekly'))}
+        </Badge>
+        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+          <Flag className="size-3 mr-1" />
+          {item.priority ?? 'medium'}
+        </Badge>
+        {item.due_date && (
+          <span className="text-black font-mono font-semibold">
+            Target: {item.due_date}
+          </span>
+        )}
+      </div>
     </div>
+  )
+}
+
+function GoalSquareCard({ item, subGoals, onClick }: { item: Todo; subGoals: Todo[]; onClick: () => void }) {
+  const completedCount = subGoals.filter(sg => sg.status === 'done').length
+  const totalCount = subGoals.length
+  const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+
+  return (
+    <button
+      onClick={onClick}
+      className="aspect-square border-2 border-black rounded-[8px] p-4 hover:shadow-lg transition-all bg-white hover:bg-[#fff9eb] flex flex-col items-center justify-center text-center group"
+    >
+      <h3 className="text-sm sm:text-base font-black text-black line-clamp-3 group-hover:text-[#de6536] transition-colors">
+        {item.title}
+      </h3>
+      {totalCount > 0 && (
+        <div className="mt-3 w-full">
+          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#1AB394] rounded-full transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-xs font-bold text-gray-600 mt-1">
+            {completedCount}/{totalCount}
+          </p>
+        </div>
+      )}
+    </button>
   )
 }
 
@@ -838,66 +1025,127 @@ function GoalDialog({
   onSubmit: () => Promise<void>
   isEdit: boolean
 }) {
+  const [newSubGoal, setNewSubGoal] = useState('')
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit Goal' : 'Create Goal'}</DialogTitle>
+          <DialogTitle className="text-2xl font-black">{isEdit ? 'Edit Goal' : 'Create Goal'}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <Input
-            placeholder="Goal title"
-            value={value.title}
-            onChange={(e) => onValueChange({ ...value, title: e.target.value })}
-          />
-          <div className="grid grid-cols-3 gap-3">
-            <Select value={value.status} onValueChange={(v) => onValueChange({ ...value, status: v as TodoStatus })}>
-              <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todo">To do</SelectItem>
-                <SelectItem value="in_progress">In progress</SelectItem>
-                <SelectItem value="done">Done</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={value.priority} onValueChange={(v) => onValueChange({ ...value, priority: v as Priority })}>
-              <SelectTrigger><SelectValue placeholder="Priority" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={value.goalPeriod}
-              onValueChange={(v) => onValueChange({ ...value, goalPeriod: v as GoalPeriod })}
-            >
-              <SelectTrigger><SelectValue placeholder="Goal period" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="quarterly">Quarterly</SelectItem>
-                <SelectItem value="long_term_custom">Long-term</SelectItem>
-              </SelectContent>
-            </Select>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-bold text-gray-700 mb-1 block">Goal Title</label>
+            <Input
+              placeholder="Enter goal title"
+              value={value.title}
+              onChange={(e) => onValueChange({ ...value, title: e.target.value })}
+              className="font-semibold"
+            />
           </div>
 
-          <div className="rounded-md border p-3">
-            <p className="text-sm font-medium mb-2">Target date</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-bold text-gray-700 mb-1 block">Status</label>
+              <Select value={value.status} onValueChange={(v) => onValueChange({ ...value, status: v as TodoStatus })}>
+                <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todo">To do</SelectItem>
+                  <SelectItem value="in_progress">In progress</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-700 mb-1 block">Priority</label>
+              <Select value={value.priority} onValueChange={(v) => onValueChange({ ...value, priority: v as Priority })}>
+                <SelectTrigger><SelectValue placeholder="Priority" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-700 mb-1 block">Period</label>
+              <Select
+                value={value.goalPeriod}
+                onValueChange={(v) => onValueChange({ ...value, goalPeriod: v as GoalPeriod })}
+              >
+                <SelectTrigger><SelectValue placeholder="Period" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="long_term_custom">Long-term</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="rounded-md border-2 border-black p-3 bg-[#fff9eb]">
+            <p className="text-sm font-bold mb-2">Target Date</p>
             <DateWheelPicker
               value={value.dueDate ?? new Date()}
               onChange={(d) => onValueChange({ ...value, dueDate: d })}
               maxYear={2100}
               minYear={2000}
             />
-            <Button variant="ghost" className="mt-2" onClick={() => onValueChange({ ...value, dueDate: null })}>
+            <Button variant="ghost" className="mt-2 text-xs" onClick={() => onValueChange({ ...value, dueDate: null })}>
               Clear target date
             </Button>
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <div className="rounded-md border-2 border-black p-3 bg-white">
+            <p className="text-sm font-bold mb-2">Sub-Goals (Tasks to complete)</p>
+            <div className="space-y-2 mb-3">
+              {value.subGoals.map((sg, idx) => (
+                <div key={idx} className="flex items-center gap-2 bg-gray-50 p-2 rounded">
+                  <span className="flex-1 text-sm font-medium">{sg}</span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => onValueChange({ ...value, subGoals: value.subGoals.filter((_, i) => i !== idx) })}
+                    className="h-6 w-6"
+                  >
+                    <Trash2 className="size-3 text-red-600" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add a sub-goal..."
+                value={newSubGoal}
+                onChange={(e) => setNewSubGoal(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newSubGoal.trim()) {
+                    onValueChange({ ...value, subGoals: [...value.subGoals, newSubGoal.trim()] })
+                    setNewSubGoal('')
+                  }
+                }}
+                className="text-sm"
+              />
+              <Button
+                onClick={() => {
+                  if (newSubGoal.trim()) {
+                    onValueChange({ ...value, subGoals: [...value.subGoals, newSubGoal.trim()] })
+                    setNewSubGoal('')
+                  }
+                }}
+                className="bg-[#de6536] hover:bg-[#c55530] text-white"
+              >
+                <Plus className="size-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="font-bold">Cancel</Button>
             <Button
               onClick={() => void onSubmit()}
+              className="bg-black text-white hover:bg-[#de6536] font-bold"
             >
               {isEdit ? 'Save Changes' : 'Create Goal'}
             </Button>
@@ -905,6 +1153,150 @@ function GoalDialog({
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function GoalDetailModal({
+  goal,
+  subGoals,
+  onClose,
+  onEdit,
+  onDelete,
+  onToggleSubGoal,
+}: {
+  goal: Todo
+  subGoals: Todo[]
+  onClose: () => void
+  onEdit: () => void
+  onDelete: () => void
+  onToggleSubGoal: (subGoal: Todo) => void
+}) {
+  const completedCount = subGoals.filter(sg => sg.status === 'done').length
+  const totalCount = subGoals.length
+  const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(10,20,50,0.75)', backdropFilter: 'blur(6px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-[12px] overflow-hidden bg-white shadow-xl border-4 border-black"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-6 border-b-4 border-black bg-[#fff9eb]">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-[#de6536] transition-colors font-bold"
+          >
+            <X size={20} />
+          </button>
+          
+          <div className="flex items-start gap-3 pr-12">
+            <Target className="size-8 text-[#de6536] flex-shrink-0 mt-1" />
+            <div className="flex-1">
+              <h3 className="text-2xl sm:text-3xl font-black text-black mb-2">{goal.title}</h3>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {statusBadge((goal.status as TodoStatus) ?? 'todo')}
+                <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 font-bold">
+                  {toTitle(((goal.goal_period as GoalPeriod) ?? 'weekly'))}
+                </Badge>
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-bold">
+                  <Flag className="size-3 mr-1" />
+                  {goal.priority ?? 'medium'}
+                </Badge>
+                {goal.due_date && (
+                  <span className="text-black font-mono font-bold">
+                    Target: {goal.due_date}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {totalCount > 0 && (
+            <div className="mt-4">
+              <div className="h-6 bg-gray-200 rounded-full overflow-hidden border-2 border-black">
+                <div
+                  className="h-full bg-[#1AB394] rounded-full transition-all flex items-center justify-end pr-2"
+                  style={{ width: `${progress}%` }}
+                >
+                  {progress > 20 && (
+                    <span className="text-xs font-black text-white">{Math.round(progress)}%</span>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm font-bold text-gray-600 mt-2">
+                {completedCount} of {totalCount} sub-goals completed
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 bg-white">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="text-lg font-black uppercase tracking-wide text-black">Sub-Goals</h4>
+            <div className="flex gap-2">
+              <Button
+                onClick={onEdit}
+                className="h-8 px-3 text-xs bg-black text-white hover:bg-[#de6536] rounded-[6px] font-bold"
+              >
+                <Pencil className="size-3 mr-1" />
+                Edit
+              </Button>
+              <Button
+                onClick={onDelete}
+                className="h-8 px-3 text-xs bg-red-600 text-white hover:bg-red-700 rounded-[6px] font-bold"
+              >
+                <Trash2 className="size-3 mr-1" />
+                Delete
+              </Button>
+            </div>
+          </div>
+
+          {subGoals.length === 0 ? (
+            <div className="py-8 border-2 border-dashed border-gray-300 rounded-lg text-center">
+              <p className="text-sm font-bold text-gray-400 uppercase tracking-wide">
+                No sub-goals added yet
+              </p>
+              <Button onClick={onEdit} variant="ghost" className="mt-2 text-xs font-bold">
+                Add sub-goals to track progress
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {subGoals.map((subGoal) => (
+                <div
+                  key={subGoal.id}
+                  className="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 hover:border-black transition-colors bg-white"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onToggleSubGoal(subGoal)}
+                    className={`size-6 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                      subGoal.status === 'done'
+                        ? 'bg-[#1AB394] border-[#1AB394]'
+                        : 'border-gray-400 hover:border-black'
+                    }`}
+                    aria-label={subGoal.status === 'done' ? 'Mark as to do' : 'Mark as done'}
+                  >
+                    {subGoal.status === 'done' ? <Check className="size-4 text-white" /> : null}
+                  </button>
+                  <span
+                    className={`flex-1 font-semibold ${
+                      subGoal.status === 'done' ? 'line-through text-gray-400' : 'text-black'
+                    }`}
+                  >
+                    {subGoal.title}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
