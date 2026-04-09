@@ -2,14 +2,19 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { signOut, getUser } from '@/lib/actions/auth'
 import { toast } from 'sonner'
 import { CustomToast } from '@/components/toastMessage'
 import { MenuVertical } from '@/components/menu-vertical'
-import { LogOut, Menu } from 'lucide-react'
+import {
+  LogOut,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
 
 const nav = [
   { href: '/money',  label: 'Money' },
@@ -19,7 +24,7 @@ const nav = [
   { href: '/work',   label: 'Work' },
 ]
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavLinks({ onNavigate, isCollapsed }: { onNavigate?: () => void; isCollapsed?: boolean }) {
   const [userName, setUserName] = useState<string | null>(null)
 
   useEffect(() => {
@@ -32,6 +37,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const handleSignOut = async () => {
     try {
       await signOut()
+      onNavigate?.()
     } catch {
       toast.custom(() => (
         <CustomToast type="error" title="Sign out failed" message="Please try again." />
@@ -40,9 +46,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* User info */}
-      {userName && (
+      {userName && !isCollapsed && (
         <div className="px-4 py-3 border-b">
           <p className="text-xs text-muted-foreground">Signed in as</p>
           <p className="text-sm font-medium truncate">{userName}</p>
@@ -50,15 +56,19 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
       )}
 
       <nav className="flex flex-col flex-1 overflow-hidden mt-6">
-        <MenuVertical menuItems={nav} onNavigate={onNavigate} />
+        <MenuVertical menuItems={nav} onNavigate={onNavigate} isCollapsed={isCollapsed} />
       </nav>
-      <div className="p-6 border-t">
+      <div className={cn("p-6 border-t", isCollapsed && "px-4")}>
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 rounded-lg text-lg font-bold text-zinc-900 dark:text-zinc-50 hover:text-[#ff6900] transition-colors"
+          className={cn(
+            "w-full flex items-center gap-3 rounded-lg text-lg font-bold text-zinc-900 dark:text-zinc-50 hover:text-[#ff6900] transition-colors",
+            isCollapsed && "justify-center"
+          )}
+          title="Sign out"
         >
-          <LogOut strokeWidth={2.5} className="size-6" />
-          Sign out
+          <LogOut strokeWidth={2.5} className="size-6 shrink-0" />
+          {!isCollapsed && <span>Sign out</span>}
         </button>
       </div>
     </div>
@@ -67,11 +77,12 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar() {
   const [open, setOpen] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   return (
     <>
       {/* Mobile/Tablet/Laptop (Drawer): hamburger + sheet drawer */}
-      <div className="xl:hidden fixed top-0 left-0 right-0 z-40 flex items-center h-14 px-4 border-b bg-background">
+      <div className="xl:hidden flex items-center h-14 px-4 border-b bg-background">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon">
@@ -81,20 +92,33 @@ export function Sidebar() {
           </SheetTrigger>
           <span className="ml-3 font-semibold text-sm tracking-wide">MY APP</span>
           <SheetContent side="left" className="w-full max-w-[350px] p-0">
-            <div className="h-14 flex items-center px-6 border-b font-bold tracking-wider text-sm">
-              MY APP
-            </div>
+            <SheetHeader className="h-14 flex flex-row items-center px-6 border-b font-bold tracking-wider text-sm space-y-0">
+              <SheetTitle className="text-sm font-bold tracking-wider">MY APP</SheetTitle>
+            </SheetHeader>
             <NavLinks onNavigate={() => setOpen(false)} />
           </SheetContent>
         </Sheet>
       </div>
 
       {/* Desktop (Fixed): permanent sidebar starting from XL screens (1280px+) */}
-      <aside className="hidden xl:flex flex-col w-72 lg:w-80 border-r bg-background shrink-0">
-        <div className="h-14 flex items-center px-6 border-b font-bold tracking-wider text-sm">
-          MY APP
+      <aside
+        className={cn(
+          "hidden xl:flex flex-col border-r bg-background shrink-0 transition-all duration-300",
+          isCollapsed ? "w-16" : "w-72 lg:w-80"
+        )}
+      >
+        <div className="h-14 flex items-center justify-between px-4 border-b">
+          {!isCollapsed && <span className="font-bold tracking-wider text-sm px-2">MY APP</span>}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="size-8 self-center"
+          >
+            {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
+          </Button>
         </div>
-        <NavLinks />
+        <NavLinks isCollapsed={isCollapsed} />
       </aside>
     </>
   )

@@ -166,6 +166,7 @@ export type Database = {
           id: string
           log_date: string | null
           note: string | null
+          user_id: string | null
         }
         Insert: {
           completed?: boolean | null
@@ -173,6 +174,7 @@ export type Database = {
           id?: string
           log_date?: string | null
           note?: string | null
+          user_id?: string | null
         }
         Update: {
           completed?: boolean | null
@@ -180,6 +182,7 @@ export type Database = {
           id?: string
           log_date?: string | null
           note?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -198,6 +201,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          user_id: string | null
         }
         Insert: {
           color?: string | null
@@ -205,6 +209,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          user_id?: string | null
         }
         Update: {
           color?: string | null
@@ -212,6 +217,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -322,33 +328,51 @@ export type Database = {
       todos: {
         Row: {
           created_at: string | null
+          day_date: string | null
           due_date: string | null
+          goal_meta: Json | null
+          goal_period: string | null
           id: string
+          is_pinned: boolean | null
           priority: string | null
           section: string | null
           status: string | null
           title: string
           type: string | null
+          updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
+          day_date?: string | null
           due_date?: string | null
+          goal_meta?: Json | null
+          goal_period?: string | null
           id?: string
+          is_pinned?: boolean | null
           priority?: string | null
           section?: string | null
           status?: string | null
           title: string
           type?: string | null
+          updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
+          day_date?: string | null
           due_date?: string | null
+          goal_meta?: Json | null
+          goal_period?: string | null
           id?: string
+          is_pinned?: boolean | null
           priority?: string | null
           section?: string | null
           status?: string | null
           title?: string
           type?: string | null
+          updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
