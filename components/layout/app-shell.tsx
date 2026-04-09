@@ -10,7 +10,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (isAuthPage) return <>{children}</>
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex flex-col xl:flex-row h-screen overflow-hidden">
       <Sidebar />
       <main className="flex-1 overflow-y-auto bg-background">
         {children}

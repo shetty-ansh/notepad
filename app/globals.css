@@ -55,28 +55,36 @@
   --color-color-chart-4: var(----color-chart-4);
   --color-color-chart-3: var(----color-chart-3);
   --color-color-chart-2: var(----color-chart-2);
+
   @keyframes iconBounce {
-  0%, 100% {
-    transform: translateY(0);
+
+    0%,
+    100% {
+      transform: translateY(0);
     }
-  20% {
-    transform: translateY(-0.3em);
+
+    20% {
+      transform: translateY(-0.3em);
     }
-  40% {
-    transform: translateY(0);
+
+    40% {
+      transform: translateY(0);
     }
-  60% {
-    transform: translateY(-0.1em);
+
+    60% {
+      transform: translateY(-0.1em);
     }
-  80% {
-    transform: translateY(0);
+
+    80% {
+      transform: translateY(0);
     }
   }
 }
 
 :root {
-  --background: #efe9d3;
-  --main-accent:#efe9d3;
+  --background: #fcfbf8;
+  /* --background: #efe9d3; */
+  --main-accent: #efe9d3;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -160,9 +168,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }

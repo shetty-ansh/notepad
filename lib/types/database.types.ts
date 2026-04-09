@@ -166,6 +166,7 @@ export type Database = {
           id: string
           log_date: string | null
           note: string | null
+          user_id: string | null
         }
         Insert: {
           completed?: boolean | null
@@ -173,6 +174,7 @@ export type Database = {
           id?: string
           log_date?: string | null
           note?: string | null
+          user_id?: string | null
         }
         Update: {
           completed?: boolean | null
@@ -180,6 +182,7 @@ export type Database = {
           id?: string
           log_date?: string | null
           note?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -198,6 +201,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          user_id: string | null
         }
         Insert: {
           color?: string | null
@@ -205,6 +209,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          user_id?: string | null
         }
         Update: {
           color?: string | null
@@ -212,6 +217,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          user_id?: string | null
         }
         Relationships: []
       }
