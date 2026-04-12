@@ -86,7 +86,7 @@ export function GoalDialog({
             <DialogContent className="
         flex flex-col gap-0 p-0 overflow-hidden
         bg-white
-        border border-black/10 border-t-[3px] border-t-[#de6536]
+        border border-black/10 border-t-[3px] border-t-black
         rounded-none sm:rounded-[12px]
         shadow-xl
         w-full h-full max-h-full sm:h-auto sm:max-h-[90vh]
@@ -96,7 +96,7 @@ export function GoalDialog({
         sm:left-1/2 sm:top-1/2
         sm:fixed
       ">
-                <DialogHeader className="px-5 pt-5 pb-4 border-b border-black/8 flex-shrink-0 bg-[#fff9eb]">
+                <DialogHeader className="px-5 pt-5 pb-4 border-b border-black/8 flex-shrink-0 bg-black/5">
                     <DialogTitle className="text-2xl font-black text-black">
                         {isEdit ? 'Edit goal' : 'New goal'}
                     </DialogTitle>
@@ -112,7 +112,7 @@ export function GoalDialog({
                             placeholder="What do you want to achieve?"
                             value={value.title}
                             onChange={(e) => onValueChange({ ...value, title: e.target.value })}
-                            className="bg-white font-bold text-black border-black/15 focus:border-[#de6536] placeholder:text-black/25 h-10 rounded-[4px]"
+                            className="bg-white font-bold text-black border-black/15 focus:border-black placeholder:text-black/25 h-10 rounded-[4px]"
                         />
                     </div>
 
@@ -183,7 +183,7 @@ export function GoalDialog({
                                 const val = e.target.value
                                 onValueChange({ ...value, dueDate: val ? new Date(val + 'T00:00:00') : null })
                             }}
-                            className="w-full h-10 px-3 border border-black/15 rounded-[4px] bg-white text-sm font-bold text-black focus:border-[#de6536] focus:outline-none transition-colors"
+                            className="w-full h-10 px-3 border border-black/15 rounded-[4px] bg-white text-sm font-bold text-black focus:border-black focus:outline-none transition-colors"
                         />
                     </div>
 
@@ -212,11 +212,11 @@ export function GoalDialog({
                                                                 if (e.key === 'Escape') cancelEdit()
                                                             }}
                                                             onBlur={commitEdit}
-                                                            className="flex-1 text-sm font-bold border-black/15 focus:border-[#de6536] h-7 rounded-[4px] px-2 bg-[#fff9eb]"
+                                                            className="flex-1 text-sm font-bold border-black/15 focus:border-black h-7 rounded-[4px] px-2 bg-black/5"
                                                         />
                                                     ) : (
                                                         <span
-                                                            className="flex-1 text-sm font-bold text-black cursor-pointer hover:text-[#de6536] transition-colors"
+                                                            className="flex-1 text-sm font-bold text-black cursor-pointer hover:text-black/70 transition-colors"
                                                             onClick={() => startEdit(idx)}
                                                             title="Click to edit"
                                                         >
@@ -228,7 +228,7 @@ export function GoalDialog({
                                                         {editingIdx !== idx && (
                                                             <button
                                                                 onClick={() => startEdit(idx)}
-                                                                className="text-black/25 hover:text-[#de6536] transition-all"
+                                                                className="text-black/25 hover:text-black/80 transition-all"
                                                             >
                                                                 <Pencil className="size-3" />
                                                             </button>
@@ -267,7 +267,7 @@ export function GoalDialog({
                                             setNewSubGoal('')
                                         }
                                     }}
-                                    className="size-6 flex items-center justify-center rounded-[4px] bg-[#de6536] text-white hover:bg-[#c55530] transition-colors flex-shrink-0"
+                                    className="size-6 flex items-center justify-center rounded-[4px] bg-black text-white hover:bg-black/80 transition-colors flex-shrink-0"
                                 >
                                     <Plus className="size-3.5" />
                                 </button>
@@ -277,7 +277,7 @@ export function GoalDialog({
                 </div>
 
                 {/* Footer */}
-                <div className="px-5 py-4 border-t border-black/8 flex items-center justify-between flex-shrink-0 bg-[#fff9eb]">
+                <div className="px-5 py-4 border-t border-black/8 flex items-center justify-between flex-shrink-0 bg-black/5">
                     <button
                         onClick={() => onOpenChange(false)}
                         className="text-xs font-black uppercase tracking-wider text-black/35 hover:text-black/60 transition-colors"
@@ -287,7 +287,7 @@ export function GoalDialog({
                     <Button
                         onClick={() => void onSubmit()}
                         disabled={!value.title.trim()}
-                        className="h-9 px-5 text-xs font-black bg-[#de6536] text-white hover:bg-[#c55530] rounded-[4px] transition-colors disabled:opacity-30"
+                        className="h-9 px-5 text-xs font-black bg-black text-white hover:bg-black/80 rounded-[4px] transition-colors disabled:opacity-30"
                     >
                         {isEdit ? 'Save changes' : 'Create goal'}
                     </Button>

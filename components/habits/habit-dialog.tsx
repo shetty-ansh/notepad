@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Trash2 } from 'lucide-react'
 
 export const HABIT_COLORS = [
-  '#de6536', // orange
+  '#000000', // black
   '#3b7a57', // green
   '#5b6abf', // indigo
   '#c0392b', // red

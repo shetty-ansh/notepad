@@ -6,8 +6,9 @@ import { Sidebar } from './sidebar'
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isAuthPage = pathname.startsWith('/login')
+  const isLandingPage = pathname === '/'
 
-  if (isAuthPage) return <>{children}</>
+  if (isAuthPage || isLandingPage) return <>{children}</>
 
   return (
     <div className="flex flex-col xl:flex-row h-screen overflow-hidden">

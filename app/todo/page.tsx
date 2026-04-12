@@ -48,7 +48,7 @@ import { DateDetailPopup, type DateItem } from '@/components/todo/date-detail-po
 import { formatText } from '@/lib/utils'
 
 type Mode = 'todos' | 'goals'
-type TodoFilter = 'all' | 'pinned' | 'daywise'
+type TodoFilter = 'all' | 'pinned' | 'Daywise'
 type GoalFilter = 'all' | GoalPeriod
 
 const defaultTodoForm: TodoFormState = {
@@ -80,7 +80,7 @@ function toTitle(period: GoalPeriod): string {
   return period.charAt(0).toUpperCase() + period.slice(1)
 }
 
-function getPeriodInfo(period: GoalPeriod): { label: string, range: string | null } {
+function getPeriodRangeLabel(period: GoalPeriod): string {
   const now = new Date()
   let start: Date
   let end: Date
@@ -89,17 +89,17 @@ function getPeriodInfo(period: GoalPeriod): { label: string, range: string | nul
     case 'weekly':
       start = startOfWeek(now, { weekStartsOn: 1 })
       end = endOfWeek(now, { weekStartsOn: 1 })
-      return { label: 'This Week', range: `${format(start, 'MMM d')} - ${format(end, 'MMM d')}` }
+      return `This Week [${format(start, 'd/M')} - ${format(end, 'd/M')}]`
     case 'monthly':
       start = startOfMonth(now)
       end = endOfMonth(now)
-      return { label: 'This Month', range: `${format(start, 'MMM d')} - ${format(end, 'MMM d')}` }
+      return `This Month [${format(start, 'd/M')} - ${format(end, 'd/M')}]`
     case 'quarterly':
       start = startOfQuarter(now)
       end = endOfQuarter(now)
-      return { label: 'This Quarter', range: `${format(start, 'MMM d')} - ${format(end, 'MMM d')}` }
+      return `This Quarter [${format(start, 'd/M')} - ${format(end, 'd/M')}]`
     default:
-      return { label: 'Long-term', range: null }
+      return 'Long-term'
   }
 }
 
@@ -152,7 +152,7 @@ function getTodoNote(todo: Todo): string {
 
 export default function TodoPage() {
   const [mode, setMode] = useState<Mode>('todos')
-  const [todoFilter, setTodoFilter] = useState<TodoFilter>('daywise')
+  const [todoFilter, setTodoFilter] = useState<TodoFilter>('Daywise')
   const [goalFilter, setGoalFilter] = useState<GoalFilter>('all')
   const [todos, setTodos] = useState<Todo[]>([])
   const [goals, setGoals] = useState<Todo[]>([])
@@ -181,7 +181,7 @@ export default function TodoPage() {
   }, [])
 
   useEffect(() => {
-    if (todoFilter !== 'daywise') setTodosHovered(false)
+    if (todoFilter !== 'Daywise') setTodosHovered(false)
   }, [todoFilter])
 
   const loadData = async () => {
@@ -202,7 +202,7 @@ export default function TodoPage() {
   const filteredTodos = useMemo(() => {
     let next = [...todos]
     if (todoFilter === 'pinned') next = next.filter((t) => t.is_pinned)
-    if (todoFilter === 'daywise') next = next.filter((t) => t.day_date)
+    if (todoFilter === 'Daywise') next = next.filter((t) => t.day_date)
     return next
   }, [todos, todoFilter])
 
@@ -557,26 +557,29 @@ export default function TodoPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto px-4 py-4 sm:p-6 space-y-5 sm:space-y-6">
+    <div className="h-full overflow-y-auto px-4 py-4 sm:p-6 space-y-2 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl sm:text-6xl font-bold">ToDo Workspace</h1>
+          <h1 className="text-4xl sm:text-7xl font-bold">ToDos</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-2">
+            Manage your daily tasks and goals
+          </p>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex w-full p-2 rounded-[6px] gap-2 border border-[#e4dfcc] shadow-[0px_0px_10px_0px_rgba(255,255,255,)] ">
+        <div className="flex w-full p-1.5 md:p-2 rounded-[6px] gap-2 border border-[#e4dfcc] shadow-[0px_0px_10px_0px_rgba(255,255,255,)] ">
           <button
             onClick={() => setMode('todos')}
             // className={`w-1/2 py-2 text-md font-semibold rounded-[4px] ${mode === 'todos' ? 'bg-[#de6536] shadow text-white border border-gray-200' : 'bg-transparent hover:bg-[#0D1717]/10'
-            className={`w-1/2 py-2 text-md font-semibold rounded-[4px] ${mode === 'todos' ? 'bg-[#de6536] shadow text-white border border-gray-200' : 'bg-transparent hover:bg-[#e4dfcc]'
+            className={`w-1/2 py-1.5 md:py-2 text-md font-semibold rounded-[4px] ${mode === 'todos' ? 'bg-[#de6536] shadow text-white border border-gray-200' : 'bg-transparent hover:bg-[#e4dfcc]'
               }`}
           >
             TODOS
           </button>
           <button
             onClick={() => setMode('goals')}
-            className={`w-1/2 py-2 text-md font-semibold rounded-[4px] ${mode === 'goals' ? 'bg-[#de6536] shadow text-white border border-gray-200' : 'bg-transparent hover:bg-[#e4dfcc]  '
+            className={`w-1/2 py-1.5 md:py-2 text-md font-semibold rounded-[4px] ${mode === 'goals' ? 'bg-[#de6536] shadow text-white border border-gray-200' : 'bg-transparent hover:bg-[#e4dfcc]  '
               }`}
           >
             GOALS
@@ -585,7 +588,7 @@ export default function TodoPage() {
         <div className='flex gap-2'>
           {mode === 'todos' ? (
             <>
-              <div className="sm:hidden block ">
+              <div>
                 <FilterDropdown
                   options={[
                     { value: 'all', label: 'All' },
@@ -595,14 +598,10 @@ export default function TodoPage() {
                   onChange={(v) => setTodoFilter(v as TodoFilter)}
                 />
               </div>
-              <div className="hidden sm:flex gap-2">
-                <Button className={`rounded-[4px] py-2 px-3 sm:py-4 sm:px-6 font-bold ${todoFilter === 'all' ? 'bg-black text-white shadow' : 'bg-white text-black border-gray-300  '}`} onClick={() => setTodoFilter('all')}>All</Button>
-                <Button className={`rounded-[4px] py-2 px-3 sm:py-4 sm:px-6 font-bold ${todoFilter === 'pinned' ? 'bg-black text-white shadow' : 'bg-white text-black border-gray-300  '}`} onClick={() => setTodoFilter('pinned')}>Pinned</Button>
-              </div>
             </>
           ) : (
             <>
-              <div className="sm:hidden block">
+              <div>
                 <FilterDropdown
                   options={[
                     { value: 'all', label: 'All' },
@@ -614,18 +613,6 @@ export default function TodoPage() {
                   value={goalFilter}
                   onChange={(v) => setGoalFilter(v as GoalFilter)}
                 />
-              </div>
-              <div className="hidden sm:flex gap-2 flex-wrap">
-                <Button className={`rounded-[4px] py-2 px-3 sm:py-4 sm:px-6 font-bold ${goalFilter === 'all' ? 'bg-black text-white shadow' : 'bg-white text-black border-gray-300  '}`} onClick={() => setGoalFilter('all')}>All</Button>
-                <Button className={`rounded-[4px] py-2 px-3 sm:py-4 sm:px-6 font-bold ${goalFilter === 'weekly' ? 'bg-black text-white shadow' : 'bg-white text-black border-gray-300  '}`} onClick={() => setGoalFilter('weekly')}>Weekly</Button>
-                <Button className={`rounded-[4px] py-2 px-3 sm:py-4 sm:px-6 font-bold ${goalFilter === 'monthly' ? 'bg-black text-white shadow' : 'bg-white text-black border-gray-300  '}`} onClick={() => setGoalFilter('monthly')}>Monthly</Button>
-                <Button className={`rounded-[4px] py-2 px-3 sm:py-4 sm:px-6 font-bold ${goalFilter === 'quarterly' ? 'bg-black text-white shadow' : 'bg-white text-black border-gray-300  '}`} onClick={() => setGoalFilter('quarterly')}>Quarterly</Button>
-                <Button
-                  className={`rounded-[6px] py-2 px-3 sm:py-4 sm:px-6 font-bold ${goalFilter === 'long_term_custom' ? 'bg-black text-white shadow' : 'bg-white text-black border-gray-300  '}`}
-                  onClick={() => setGoalFilter('long_term_custom')}
-                >
-                  Long-term
-                </Button>
               </div>
             </>
           )}
@@ -649,13 +636,17 @@ export default function TodoPage() {
         </div>
 
         {mode === 'goals' && unfinishedGoals.length > 0 && (
-          <Button
-            variant={showArchived ? 'default' : 'outline'}
-            className={`rounded-[4px] font-bold ${showArchived ? 'bg-[#de6536] text-white border-transparent' : 'bg-white text-black border-gray-300'}`}
-            onClick={() => setShowArchived(!showArchived)}
-          >
-            {showArchived ? 'Hide Unfinished' : `Show Unfinished (${unfinishedGoals.length})`}
-          </Button>
+          <div className="flex items-center gap-3 mb-1">
+            <button
+              onClick={() => setShowArchived(!showArchived)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${showArchived ? 'bg-[#de6536]' : 'bg-black'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showArchived ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest cursor-pointer" onClick={() => setShowArchived(!showArchived)}>
+              {showArchived ? 'Hide Unfinished' : `Show Unfinished (${unfinishedGoals.length})`}
+            </span>
+          </div>
         )}
 
         {selectedCalendarDate && (
@@ -675,7 +666,7 @@ export default function TodoPage() {
             <>
               <button
                 type="button"
-                onClick={() => setTodoFilter((prev) => (prev === 'daywise' ? 'all' : 'daywise'))}
+                onClick={() => setTodoFilter((prev) => (prev === 'Daywise' ? 'all' : 'Daywise'))}
                 onPointerEnter={(e) => {
                   if (e.pointerType === 'mouse') setTodosHovered(true)
                 }}
@@ -683,41 +674,41 @@ export default function TodoPage() {
                   if (e.pointerType === 'mouse') setTodosHovered(false)
                 }}
                 onPointerDown={() => setTodosHovered(false)}
-                className={`relative overflow-hidden w-full text-left rounded-lg border bg-card p-4 transition-colors ${todoFilter === 'daywise' ? 'shadow border-black/20' : 'text-black border-gray-300 hover:border-black/20'}`}
+                className={`relative overflow-hidden w-full text-left rounded-lg border bg-card p-4 transition-colors ${todoFilter === 'Daywise' ? 'shadow border-black/20' : 'text-black border-gray-300 hover:border-black/20'}`}
               >
                 <span
                   aria-hidden="true"
                   className="absolute inset-0"
                   style={{
                     background:
-                      'radial-gradient(circle at 50% 120%, rgba(253, 224, 71, 0.4) 0%, transparent 60%), radial-gradient(circle at 50% 130%, rgba(251, 191, 36, 0.4) 0%, transparent 70%), radial-gradient(circle at 50% 140%, rgba(244, 114, 182, 0.5) 0%, transparent 80%), linear-gradient(180deg, #ffffff 0%, #fff9eb 100%)', opacity: todosHovered || todoFilter === 'daywise' ? 1 : 0,
+                      'radial-gradient(circle at 50% 120%, rgba(253, 224, 71, 0.4) 0%, transparent 60%), radial-gradient(circle at 50% 130%, rgba(251, 191, 36, 0.4) 0%, transparent 70%), radial-gradient(circle at 50% 140%, rgba(244, 114, 182, 0.5) 0%, transparent 80%), linear-gradient(180deg, #ffffff 0%, #fff9eb 100%)', opacity: todosHovered || todoFilter === 'Daywise' ? 1 : 0,
                     transitionProperty: 'opacity',
-                    transitionDuration: todoFilter === 'daywise' ? '0ms' : '700ms',
+                    transitionDuration: todoFilter === 'Daywise' ? '0ms' : '700ms',
                     transitionTimingFunction: 'ease-out',
                   }}
                 />
                 <div className="relative z-10 flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-xl sm:text-3xl font-bold">{todoFilter === 'daywise' ? 'Weekly View' : 'Normal View'}</div>
-                    <div className="text-xs sm:text-sm text-gray-600 font-semibold">{todoFilter === 'daywise' ? 'Your week at a glance' : 'Click to open day-wise view'}
+                    <div className="text-xl sm:text-3xl font-bold">{todoFilter === 'Daywise' ? 'Weekly View' : 'Normal View'}</div>
+                    <div className="text-xs sm:text-sm text-gray-600 font-semibold">{todoFilter === 'Daywise' ? 'Your week at a glance' : 'Click to open day-wise view'}
                     </div>
                   </div>
                 </div>
               </button>
 
-              {todoFilter === 'daywise' ? (
+              {todoFilter === 'Daywise' ? (
                 <div className="rounded-lg border bg-card p-4">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div>
                       <div className="text-lg font-bold">Weekly ToDo List</div>
-                      <div className="mt-1 text-2xl sm:text-3xl font-bold text-[#de6536]">
+                      <div className="mt-1 text-2xl sm:text-3xl font-bold text-black">
                         {format(weekStart, 'MMM d')} - {format(addDays(weekStart, 6), 'MMM d')}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button className="rounded-[4px] py-2 px-4 font-semibold bg-white text-black shadow hover:bg-[#de6536]/40" onClick={() => setWeekStart((d) => addDays(d, -7))}>Prev</Button>
-                      <Button className="rounded-[4px] py-2 px-4 font-semibold bg-white text-black shadow hover:bg-[#de6536]/40" onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>This week</Button>
-                      <Button className="rounded-[4px] py-2 px-4 font-semibold bg-white text-black shadow hover:bg-[#de6536]/40" onClick={() => setWeekStart((d) => addDays(d, 7))}>Next</Button>
+                      <Button className="rounded-[4px] py-2 px-4 font-semibold bg-white text-black shadow hover:bg-black/5" onClick={() => setWeekStart((d) => addDays(d, -7))}>Prev</Button>
+                      <Button className="rounded-[4px] py-2 px-4 font-semibold bg-white text-black shadow hover:bg-black/5" onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>This week</Button>
+                      <Button className="rounded-[4px] py-2 px-4 font-semibold bg-white text-black shadow hover:bg-black/5" onClick={() => setWeekStart((d) => addDays(d, 7))}>Next</Button>
                     </div>
                   </div>
 
@@ -822,9 +813,9 @@ export default function TodoPage() {
           ) : (
             <>
               {showArchived && unfinishedGoals.length > 0 && (
-                <div className="mb-8 space-y-4 p-4 rounded-xl border-2 border-dashed border-[#de6536]/20 bg-[#fff9eb]/30">
+                <div className="mb-8 space-y-4 p-4 rounded-xl border-2 border-dashed border-black/20 bg-black/5">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-[#de6536]">
+                    <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-black">
                       Unfinished from Past Periods
                     </h2>
                   </div>
@@ -842,7 +833,7 @@ export default function TodoPage() {
                             e.stopPropagation();
                             rolloverGoal(item);
                           }}
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-[#de6536] text-white text-[10px] h-6 px-2 font-bold rounded shadow-lg transition-all z-10"
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-black text-white text-[10px] h-6 px-2 font-bold rounded shadow-lg transition-all z-10 hover:bg-black/80"
                         >
                           Rollover
                         </Button>
@@ -863,7 +854,7 @@ export default function TodoPage() {
                             e.stopPropagation();
                             rolloverGoal(item);
                           }}
-                          className="absolute top-2 right-2 bg-[#de6536] text-white text-[10px] h-6 px-2 font-bold rounded shadow-lg transition-all z-10"
+                          className="absolute top-2 right-2 bg-black text-white text-[10px] h-6 px-2 font-bold rounded shadow-lg transition-all z-10 hover:bg-black/80"
                         >
                           Rollover
                         </Button>
@@ -877,25 +868,18 @@ export default function TodoPage() {
                 const periodGoals = filteredGoals.filter(g => g.goal_period === period)
                 if (periodGoals.length === 0 && goalFilter !== 'all') return null
 
-                const periodInfo = getPeriodInfo(period)
-
                 return (
                   <div key={period} className="space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
-                      <div className="flex flex-col sm:flex-row sm:items-end gap-2">
-                        <h2 className="text-2xl font-black text-black leading-none">
-                          {periodInfo.label}
-                        </h2>
-                        {periodInfo.range && (
-                          <span className="text-sm font-bold text-gray-500 mb-0.5">{periodInfo.range}</span>
-                        )}
-                      </div>
-                      px                      <Button
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-2xl font-black uppercase tracking-tight text-black">
+                        {period === 'long_term_custom' ? 'Long-term' : formatText(getPeriodRangeLabel(period))}
+                      </h2>
+                      <Button
                         onClick={() => {
                           openNewGoalDialog(period as GoalPeriod)
                           setSelectedPeriod(period)
                         }}
-                        className="bg-[#de6536] text-white hover:bg-[#c55530] h-8 px-3 text-xs font-bold rounded-[4px] shadow-none"
+                        className="bg-black text-white hover:bg-black/80 h-8 px-3 text-xs font-bold rounded-[4px] shadow-none"
                       >
                         <Plus className="size-3" />
                         Add

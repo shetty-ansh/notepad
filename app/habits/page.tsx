@@ -26,6 +26,23 @@ const defaultForm: HabitFormState = {
   frequency: 'daily',
 }
 
+const HABIT_QUOTES = [
+  "Small daily improvements are the key to staggering long-term results.",
+  "Success is the product of daily habits—not once-in-a-lifetime transformations.",
+  "You do not rise to the level of your goals. You fall to the level of your systems.",
+  "We are what we repeatedly do. Excellence, then, is not an act, but a habit.",
+  "Motivation is what gets you started. Habit is what keeps you going.",
+  "The secret of your future is hidden in your daily routine.",
+  "Don't break the chain. Every day counts.",
+  "First we make our habits, then our habits make us.",
+  "Your life today is essentially the sum of your habits.",
+  "Habits are the compound interest of self-improvement.",
+  "Excellence is an art won by training and habituation.",
+  "Good habits formed at youth make all the difference.",
+  "Chains of habit are too light to be felt until they are too heavy to be broken.",
+  "It is easier to prevent bad habits than to break them."
+]
+
 export default function HabitsPage() {
   const [habits, setHabits] = useState<Habit[]>([])
   const [logs, setLogs] = useState<HabitLog[]>([])
@@ -40,6 +57,15 @@ export default function HabitsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null)
   const [form, setForm] = useState<HabitFormState>(defaultForm)
+  const [quoteIndex, setQuoteIndex] = useState(0)
+
+  useEffect(() => {
+    setQuoteIndex(Math.floor(Math.random() * HABIT_QUOTES.length))
+    const interval = setInterval(() => {
+      setQuoteIndex(Math.floor(Math.random() * HABIT_QUOTES.length))
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     loadData()
@@ -299,7 +325,7 @@ export default function HabitsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button
-            className="bg-black text-white hover:bg-[#de6536] h-10 px-4 text-sm font-medium rounded-[6px] shadow-none transition-colors border border-transparent"
+            className="bg-black text-white hover:bg-black/80 h-10 px-4 text-sm font-medium rounded-[6px] shadow-none transition-colors border border-transparent"
             onClick={openNewDialog}
           >
             <Plus className="size-4 mr-1" />
@@ -307,6 +333,42 @@ export default function HabitsPage() {
           </Button>
         </div>
       </div>
+
+      {!loading && habits.length > 0 && (() => {
+        const activeHabitsCount = habits.length
+        let bestOverallStreak = 0
+        let completedTodayCount = 0
+        const todayStr = format(new Date(), 'yyyy-MM-dd')
+
+        habits.forEach((habit) => {
+          const stats = computeStats(habit.id)
+          if (stats.currentStreak > bestOverallStreak) bestOverallStreak = stats.currentStreak
+          if (logs.some((l) => l.habit_id === habit.id && l.log_date === todayStr && l.completed)) {
+            completedTodayCount++
+          }
+        })
+
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-white border border-black/10 rounded-[6px] p-4 flex flex-col justify-center items-center shadow-sm">
+              <div className="text-3xl font-black text-black">{activeHabitsCount}</div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Active Habits</div>
+            </div>
+            <div className="bg-white border border-black/10 rounded-[6px] p-4 flex flex-col justify-center items-center shadow-sm">
+              <div className="text-3xl font-black text-black">{completedTodayCount}</div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Done Today</div>
+            </div>
+            <div className="bg-white border border-black/10 rounded-[6px] p-4 flex flex-col justify-center items-center shadow-sm">
+              <div className="text-3xl font-black text-black">{bestOverallStreak}</div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Best Streak</div>
+            </div>
+            <div className="bg-white border border-black/10 rounded-[6px] p-4 flex flex-col justify-center items-center shadow-sm">
+              <div className="text-3xl font-black text-black">{Math.round((completedTodayCount / (activeHabitsCount || 1)) * 100)}%</div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Today's Progress</div>
+            </div>
+          </div>
+        )
+      })()}
 
       {loading ? (
         <div className="flex items-center justify-center min-h-[40vh]">
@@ -324,7 +386,7 @@ export default function HabitsPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {habits.map((habit) => {
             const stats = computeStats(habit.id)
             
@@ -357,6 +419,15 @@ export default function HabitsPage() {
               />
             )
           })}
+        </div>
+      )}
+
+      {/* Quotes Section */}
+      {!loading && (
+        <div className="mt-8 p-6 sm:p-8 flex flex-col items-center justify-center text-center transition-all min-h-[100px]">
+          <p className="text-lg sm:text-xl font-medium text-black/60 italic max-w-2xl transition-opacity duration-1000">
+            "{HABIT_QUOTES[quoteIndex]}"
+          </p>
         </div>
       )}
 
