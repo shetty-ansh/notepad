@@ -21,14 +21,14 @@ export function GoalSquareCard({
     return (
         <div
             onClick={onClick}
-            className={`w-full min-h-[12rem] sm:w-[16rem] border rounded-lg p-4 transition-all flex flex-col justify-between text-left group cursor-pointer ${isDone
+            className={`w-full h-[12rem] sm:w-[16rem] border rounded-lg p-4 transition-all flex flex-col justify-between text-left group cursor-pointer ${isDone
                 ? 'bg-emerald-50/30 border-emerald-100 hover:border-emerald-200'
                 : isExpiring
                     ? 'bg-red-50 border-red-200 hover:border-red-300'
                     : 'bg-white border-black/10 hover:border-black/25'
                 }`}
         >
-            <h3 className="text-lg sm:text-2xl font-black text-black leading-snug break-words whitespace-normal group-hover:text-[#de6536] transition-colors overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            <h3 className="text-lg sm:text-2xl font-black text-black leading-snug break-words whitespace-normal group-hover:text-black/70 transition-colors overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                 {item.title}
             </h3>
 

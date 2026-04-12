@@ -56,7 +56,7 @@ export function HabitCalendar({
   const calendarEnd = endOfWeek(monthEnd)
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
 
-  const habitColor = habit.color || '#de6536'
+  const habitColor = habit.color || 'black'
 
   return (
     <div className="flex flex-col h-full bg-white rounded-xl border border-black/10 overflow-hidden">
@@ -79,7 +79,7 @@ export function HabitCalendar({
       <div className="p-4 sm:p-6 space-y-6">
         {/* Stats Row */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <StatCard icon={<Flame />} label="Current Streak" value={`${stats.currentStreak} days`} color="#de6536" />
+          <StatCard icon={<Flame />} label="Current Streak" value={`${stats.currentStreak} days`} color="black" />
           <StatCard icon={<Trophy />} label="Best Streak" value={`${stats.bestStreak} days`} color="#b45309" />
           <StatCard icon={<BarChart3 />} label="This Month" value={`${stats.monthCompletions} days`} />
           <StatCard icon={<CalendarCheck />} label="Total Done" value={`${stats.totalCompletions}`} />

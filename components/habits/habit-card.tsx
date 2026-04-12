@@ -21,15 +21,15 @@ export function HabitCard({ habit, currentStreak, monthCompletions, recentLogs, 
   return (
     <div
       onClick={onClick}
-      className="bg-white border hover:border-black/20 border-black/10 rounded-[12px] p-4 cursor-pointer transition-all shadow-sm hover:shadow group flex flex-col"
+      className="bg-white border hover:border-black/20 border-black/10 rounded-[6px] w-full h-[150px] md:h-[200px] p-4 cursor-pointer transition-all shadow-sm hover:shadow group flex flex-col lg:justify-between"
     >
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <div
             className="size-3.5 rounded-full"
-            style={{ backgroundColor: habit.color || '#de6536' }}
+            style={{ backgroundColor: habit.color || 'black' }}
           />
-          <h3 className="font-bold text-lg text-black group-hover:text-black/80 transition-colors">{habit.name}</h3>
+          <h3 className="font-bold text-2xl text-black group-hover:text-black/80 transition-colors">{habit.name}</h3>
         </div>
         <div className="flex items-center gap-2">
           {currentStreak > 0 && (
@@ -40,12 +40,11 @@ export function HabitCard({ habit, currentStreak, monthCompletions, recentLogs, 
           )}
           <button
             onClick={onToggleToday}
-            className={`flex items-center justify-center size-7 sm:size-8 rounded-full border transition-all ${
-              isTodayCompleted 
-                ? 'text-white border-transparent shadow-sm' 
-                : 'text-gray-400 border-gray-200 hover:border-black/20 hover:text-black/50 hover:bg-black/5'
-            }`}
-            style={isTodayCompleted ? { backgroundColor: habit.color || '#de6536' } : {}}
+            className={`flex items-center justify-center size-7 sm:size-8 rounded-full border transition-all border-black ${isTodayCompleted
+              ? 'text-white border-transparent shadow-sm'
+              : 'text-gray-400 border-black/40 hover:text-black/50 hover:bg-black/5'
+              }`}
+            style={isTodayCompleted ? { backgroundColor: habit.color || 'black' } : {}}
             title={isTodayCompleted ? 'Completed' : 'Mark completed today'}
           >
             <svg
@@ -70,10 +69,10 @@ export function HabitCard({ habit, currentStreak, monthCompletions, recentLogs, 
             <span>This Month</span>
             <span className="text-black/60">{monthCompletions} / {daysInMonth}</span>
           </p>
-          <div className="h-[6px] bg-black/5 rounded-full overflow-hidden">
+          <div className="h-[10px] bg-black/5 rounded-[4px] overflow-hidden">
             <div
-              className="h-full rounded-full transition-all"
-              style={{ width: `${progress}%`, backgroundColor: habit.color || '#de6536' }}
+              className="h-full rounded-[4px] transition-all"
+              style={{ width: `${progress}%`, backgroundColor: habit.color || 'black' }}
             />
           </div>
         </div>
@@ -82,8 +81,8 @@ export function HabitCard({ habit, currentStreak, monthCompletions, recentLogs, 
           {recentLogs.map((isDone, idx) => (
             <div
               key={idx}
-              className={`flex-1 h-1.5 rounded-full ${isDone ? '' : 'bg-black/5'}`}
-              style={isDone ? { backgroundColor: habit.color || '#de6536' } : {}}
+              className={`flex-1 h-1.5 rounded-[2px] ${isDone ? '' : 'bg-black/5'}`}
+              style={isDone ? { backgroundColor: habit.color || 'black' } : {}}
             />
           ))}
         </div>

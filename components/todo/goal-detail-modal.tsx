@@ -47,7 +47,7 @@ export function GoalDetailModal({
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="px-5 pt-5 pb-4 flex-shrink-0 bg-[#fff9eb]">
+                <div className="px-5 pt-5 pb-4 flex-shrink-0 bg-black/5">
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                             <h3 className="text-2xl sm:text-3xl font-black text-black leading-tight mb-2">
@@ -57,7 +57,7 @@ export function GoalDetailModal({
                                 <span className={`px-2 py-0.5 rounded-[6px] ${isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-black/5 text-black/50'}`}>
                                     {statusLabel((goal.status as TodoStatus) ?? 'todo')}
                                 </span>
-                                <span className="px-2 py-0.5 rounded-[6px] bg-[#de6536]/10 text-[#de6536]">
+                                <span className="px-2 py-0.5 rounded-[6px] bg-black/10 text-black">
                                     {toTitle((goal.goal_period as GoalPeriod) ?? 'weekly')}
                                 </span>
                                 <span className="px-2 py-0.5 rounded-[6px] bg-amber-50 text-amber-600 flex items-center gap-1">
@@ -108,7 +108,7 @@ export function GoalDetailModal({
                     {subGoals.length === 0 ? (
                         <div className="py-10 text-center">
                             <p className="text-sm font-bold text-black/25">No sub-goals yet</p>
-                            <button onClick={onEdit} className="mt-2 text-xs font-bold text-[#de6536] hover:underline">
+                            <button onClick={onEdit} className="mt-2 text-xs font-bold text-black/60 hover:text-black hover:underline">
                                 Add sub-goals to track progress
                             </button>
                         </div>
@@ -152,7 +152,7 @@ export function GoalDetailModal({
                     </Button>
                     <Button
                         onClick={onEdit}
-                        className="h-8 px-4 text-xs font-bold bg-black text-white hover:bg-[#de6536] rounded-[4px] shadow-none"
+                        className="h-8 px-4 text-xs font-bold bg-black text-white hover:bg-black/80 rounded-[4px] shadow-none"
                     >
                         <Pencil className="size-3 mr-1.5" />
                         Edit goal

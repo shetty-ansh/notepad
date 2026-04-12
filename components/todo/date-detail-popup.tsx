@@ -39,14 +39,14 @@ export function DateDetailPopup({
                     sm:rounded-[12px]
                     overflow-hidden
                     shadow-xl
-                    border-t-[3px] border-t-[#de6536] sm:border sm:border-black/10
+                    border-t-[3px] border-t-black sm:border sm:border-black/10
                 "
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-3 pt-3 pb-3 border-b border-black/8 bg-[#fff9eb] flex-shrink-0">
                     <div className="flex items-center gap-2">
-                        <CalendarDays className="size-8 text-[#de6536]" />
+                        <CalendarDays className="size-8 text-black" />
                         <div>
                             <h3 className="text-xl font-black text-black">{format(date, 'EEEE')}</h3>
                             <p className="text-xs font-bold text-black/40">{format(date, 'MMMM d, yyyy')}</p>
@@ -54,7 +54,7 @@ export function DateDetailPopup({
                     </div>
                     <button
                         onClick={onClose}
-                        className="size-8 flex items-center justify-center rounded-full bg-black text-white hover:bg-[#de6536] transition-colors"
+                        className="size-8 flex items-center justify-center rounded-full bg-black text-white hover:bg-black/80 transition-colors"
                     >
                         <X size={16} />
                     </button>
@@ -98,16 +98,16 @@ export function DateDetailPopup({
                             {goals.length > 0 && (
                                 <div>
                                     <div className="flex items-center gap-2 mb-3">
-                                        <Target className="size-4 text-[#de6536]" />
+                                        <Target className="size-4 text-black" />
                                         <span className="text-[10px] font-black uppercase tracking-widest text-black/35">Goals ({goals.length})</span>
                                     </div>
                                     <div className="space-y-2">
                                         {goals.map((item) => (
                                             <div
                                                 key={item.id}
-                                                className="flex items-center gap-3 p-3 rounded-[6px] border border-[#de6536]/20 bg-[#fff9eb] hover:border-[#de6536]/40 transition-colors"
+                                                className="flex items-center gap-3 p-3 rounded-[6px] border border-black/10 bg-black/5 hover:border-black/20 transition-colors"
                                             >
-                                                <div className={`size-2.5 rounded-full flex-shrink-0 ${item.status === 'done' ? 'bg-[#1AB394]' : 'bg-[#de6536]'}`} />
+                                                <div className={`size-2.5 rounded-full flex-shrink-0 ${item.status === 'done' ? 'bg-[#1AB394]' : 'bg-black'}`} />
                                                 <span className={`flex-1 text-sm font-bold ${item.status === 'done' ? 'line-through text-black/40' : 'text-black'}`}>
                                                     {item.title}
                                                 </span>

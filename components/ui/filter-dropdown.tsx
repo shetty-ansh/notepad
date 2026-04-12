@@ -42,10 +42,10 @@ export function FilterDropdown({
                 onClick={() => setOpen((p) => !p)}
                 className="
                     flex items-center gap-1.5
-                    h-9 px-3 sm:px-4
+                    h-10 w-24 px-3 sm:px-4
                     text-xs sm:text-sm font-semibold
                     rounded-[4px]
-                    text-[#de6536] bg-white
+                    text-black bg-white
                     hover:bg-black
                     transition-colors
                     shadow-sm
@@ -70,11 +70,11 @@ export function FilterDropdown({
                                     setOpen(false)
                                 }}
                                 className={`
-                                    w-full text-left px-3 py-2 text-xs sm:text-sm 
+                                    w-full text-left px-3 py-3 text-xs sm:text-sm 
                                     transition-colors
                                     ${isSelected
-                                        ? 'bg-[#de6536] text-white'
-                                        : 'bg-white text-[#de6536] hover:bg-[#de6536]/10'
+                                        ? 'bg-black text-white'
+                                        : 'bg-white text-black hover:bg-black/10'
                                     }
                                 `}
                             >
