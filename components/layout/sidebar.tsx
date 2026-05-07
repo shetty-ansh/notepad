@@ -1,16 +1,17 @@
 'use client'
 
-import Link from 'next/link'
-import { useState, useEffect } from 'react'
+// import Link from 'next/link'
+import { useState } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { signOut, getUser } from '@/lib/actions/auth'
-import { toast } from 'sonner'
-import { CustomToast } from '@/components/toastMessage'
+// AUTH DISABLED FOR NOW
+// import { signOut, getUser } from '@/lib/actions/auth'
+// import { toast } from 'sonner'
+// import { CustomToast } from '@/components/toastMessage'
 import { MenuVertical } from '@/components/menu-vertical'
 import {
-  LogOut,
+  // LogOut,
   Menu,
   ChevronLeft,
   ChevronRight,
@@ -25,25 +26,28 @@ const nav = [
 ]
 
 function NavLinks({ onNavigate, isCollapsed }: { onNavigate?: () => void; isCollapsed?: boolean }) {
-  const [userName, setUserName] = useState<string | null>(null)
+  // AUTH DISABLED FOR NOW
+  // const [userName, setUserName] = useState<string | null>(null)
+  //
+  // useEffect(() => {
+  //   getUser().then((user) => {
+  //     const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || null
+  //     setUserName(name)
+  //   })
+  // }, [])
+  const userName = null
 
-  useEffect(() => {
-    getUser().then((user) => {
-      const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || null
-      setUserName(name)
-    })
-  }, [])
-
-  const handleSignOut = async () => {
-    try {
-      await signOut()
-      onNavigate?.()
-    } catch {
-      toast.custom(() => (
-        <CustomToast type="error" title="Sign out failed" message="Please try again." />
-      ))
-    }
-  }
+  // AUTH DISABLED FOR NOW
+  // const handleSignOut = async () => {
+  //   try {
+  //     await signOut()
+  //     onNavigate?.()
+  //   } catch {
+  //     toast.custom(() => (
+  //       <CustomToast type="error" title="Sign out failed" message="Please try again." />
+  //     ))
+  //   }
+  // }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -58,7 +62,8 @@ function NavLinks({ onNavigate, isCollapsed }: { onNavigate?: () => void; isColl
       <nav className="flex flex-col flex-1 overflow-hidden mt-6">
         <MenuVertical menuItems={nav} onNavigate={onNavigate} isCollapsed={isCollapsed} />
       </nav>
-      <div className={cn("p-6 border-t", isCollapsed && "px-4")}>
+      {/* AUTH DISABLED FOR NOW */}
+      {/* <div className={cn("p-6 border-t", isCollapsed && "px-4")}>
         <button
           onClick={handleSignOut}
           className={cn(
@@ -70,7 +75,7 @@ function NavLinks({ onNavigate, isCollapsed }: { onNavigate?: () => void; isColl
           <LogOut strokeWidth={2.5} className="size-6 shrink-0" />
           {!isCollapsed && <span>Sign out</span>}
         </button>
-      </div>
+      </div> */}
     </div>
   )
 }

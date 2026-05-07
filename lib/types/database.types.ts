@@ -261,10 +261,12 @@ export type Database = {
           id: string
           is_pinned: boolean | null
           section: string | null
+          sort_order: number | null
           tags: string[] | null
           title: string | null
           type: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           content?: string | null
@@ -272,10 +274,12 @@ export type Database = {
           id?: string
           is_pinned?: boolean | null
           section?: string | null
+          sort_order?: number | null
           tags?: string[] | null
           title?: string | null
           type?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           content?: string | null
@@ -283,12 +287,113 @@ export type Database = {
           id?: string
           is_pinned?: boolean | null
           section?: string | null
+          sort_order?: number | null
           tags?: string[] | null
           title?: string | null
           type?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
+      }
+      projects: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          name: string
+          priority: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          name: string
+          priority?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          name?: string
+          priority?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      project_tasks: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          parent_task_id: string | null
+          priority: string | null
+          project_id: string | null
+          sort_order: number | null
+          status: string | null
+          title: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          parent_task_id?: string | null
+          priority?: string | null
+          project_id?: string | null
+          sort_order?: number | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          parent_task_id?: string | null
+          priority?: string | null
+          project_id?: string | null
+          sort_order?: number | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reminders: {
         Row: {
