@@ -3,15 +3,32 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { GoalPeriod, Priority, Todo, TodoStatus, TodoType } from '@/lib/types'
+import { redis } from '@/lib/redis'
+import { revalidatePath } from 'next/cache'
 
+async function invalidateTodoCache(userId: string) {
+  const keys = await redis.keys(`todos:${userId}:*`)
+  if (keys.length > 0) {
+    await redis.del(...keys)
+  }
+  revalidatePath('/', 'layout')
+}
+
+
+// AUTH DISABLED FOR NOW
+// const getUserId = cache(async (): Promise<string> => {
+//   const supabase = await createClient()
+//   const {
+//     data: { user },
+//     error,
+//   } = await supabase.auth.getUser()
+//   if (error || !user) throw new Error('Not authenticated')
+//   return user.id
+// })
 const getUserId = cache(async (): Promise<string> => {
   const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) throw new Error('Not authenticated')
-  return user.id
+  const { data: { user } } = await supabase.auth.getUser()
+  return user?.id ?? 'dev-user'
 })
 
 type TodoInput = {
@@ -30,6 +47,11 @@ type TodoInput = {
 export async function getTodosByType(type: TodoType): Promise<Todo[]> {
   const supabase = await createClient()
   const userId = await getUserId()
+
+  const cacheKey = `todos:${userId}:${type}`
+  const cached = await redis.get<Todo[]>(cacheKey)
+  if (cached) return cached
+
   const { data, error } = await supabase
     .from('todos')
     .select('*')
@@ -39,6 +61,8 @@ export async function getTodosByType(type: TodoType): Promise<Todo[]> {
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)
+  
+  await redis.set(cacheKey, data, { ex: 3600 })
   return data
 }
 
@@ -65,6 +89,7 @@ export async function createTodo(payload: TodoInput): Promise<Todo> {
     .single()
 
   if (error) throw new Error(error.message)
+  await invalidateTodoCache(userId)
   return data
 }
 
@@ -81,6 +106,7 @@ export async function updateTodo(id: string, payload: Partial<TodoInput>): Promi
     .single()
 
   if (error) throw new Error(error.message)
+  await invalidateTodoCache(userId)
   return data
 }
 
@@ -90,6 +116,7 @@ export async function deleteTodo(id: string): Promise<void> {
 
   const { error } = await supabase.from('todos').delete().eq('id', id).eq('user_id', userId)
   if (error) throw new Error(error.message)
+  await invalidateTodoCache(userId)
 }
 
 export async function toggleTodoPin(id: string, pinned: boolean): Promise<Todo> {

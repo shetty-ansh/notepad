@@ -3,6 +3,19 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { redis } from '@/lib/redis'
+import { revalidatePath } from 'next/cache'
+
+async function invalidateMoneyCache(userId: string) {
+  const patterns = ['accounts', 'transactions', 'categories', 'goals', 'ledger', 'bills', 'reminders']
+  for (const pattern of patterns) {
+    const keys = await redis.keys(`${pattern}:${userId}*`)
+    if (keys.length > 0) {
+      await redis.del(...keys)
+    }
+  }
+  revalidatePath('/', 'layout')
+}
 import type {
   Account,
   Transaction,
@@ -23,11 +36,17 @@ import type {
   BillFrequency,
 } from '@/lib/types'
 
+// AUTH DISABLED FOR NOW
+// const getUserId = cache(async (): Promise<string> => {
+//   const supabase = await createClient()
+//   const { data: { user }, error } = await supabase.auth.getUser()
+//   if (error || !user) throw new Error('Not authenticated')
+//   return user.id
+// })
 const getUserId = cache(async (): Promise<string> => {
   const supabase = await createClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) throw new Error('Not authenticated')
-  return user.id
+  const { data: { user } } = await supabase.auth.getUser()
+  return user?.id ?? 'dev-user'
 })
 
 // ============================================================================
@@ -37,6 +56,11 @@ const getUserId = cache(async (): Promise<string> => {
 export async function getAccounts(): Promise<Account[]> {
   const supabase = await createClient()
   const userId = await getUserId()
+
+  const cacheKey = `accounts:${userId}`
+  const cached = await redis.get<Account[]>(cacheKey)
+  if (cached) return cached
+
   const { data, error } = await supabase
     .from('accounts')
     .select('*')
@@ -44,6 +68,8 @@ export async function getAccounts(): Promise<Account[]> {
     .eq('is_active', true)
 
   if (error) throw new Error(error.message)
+  
+  await redis.set(cacheKey, data, { ex: 3600 })
   return data
 }
 
@@ -57,6 +83,7 @@ export async function addAccount(accountData: NewAccount): Promise<Account> {
     .single()
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
   return data
 }
 
@@ -138,6 +165,7 @@ export async function deleteAccount(accountId: string): Promise<void> {
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
 }
 
 
@@ -152,6 +180,7 @@ export async function updateAccountBalance(id: string, newBalance: number): Prom
 
   if (error) throw new Error(error.message)
   await resolveProvisionShortfall(id, userId, supabase)
+  await invalidateMoneyCache(userId)
 }
 
 export async function updateAccount(id: string, accountData: Partial<NewAccount & { color?: string | null }>): Promise<Account> {
@@ -167,6 +196,7 @@ export async function updateAccount(id: string, accountData: Partial<NewAccount 
 
   if (error) throw new Error(error.message)
   await resolveProvisionShortfall(id, userId, supabase)
+  await invalidateMoneyCache(userId)
   return data
 }
 
@@ -177,6 +207,11 @@ export async function updateAccount(id: string, accountData: Partial<NewAccount 
 export async function getTransactions(filters?: TransactionFilters): Promise<Transaction[]> {
   const supabase = await createClient()
   const userId = await getUserId()
+
+  const cacheKey = `transactions:${userId}:${JSON.stringify(filters || {})}`
+  const cached = await redis.get<Transaction[]>(cacheKey)
+  if (cached) return cached
+
   let query = supabase.from('transactions').select('*').eq('user_id', userId)
 
   if (filters?.accountId) query = query.eq('account_id', filters.accountId)
@@ -186,6 +221,8 @@ export async function getTransactions(filters?: TransactionFilters): Promise<Tra
 
   const { data, error } = await query
   if (error) throw new Error(error.message)
+  
+  await redis.set(cacheKey, data, { ex: 3600 })
   return data
 }
 
@@ -246,6 +283,7 @@ export async function addTransaction(transactionData: NewTransaction): Promise<T
   }
 
   await resolveProvisionShortfall(transactionData.account_id, userId, supabase)
+  await invalidateMoneyCache(userId)
   return transaction
 }
 
@@ -325,6 +363,7 @@ export async function transferMoney(
     .eq('user_id', userId)
 
   await resolveProvisionShortfall(fromAccountId, userId, supabase)
+  await invalidateMoneyCache(userId)
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
@@ -390,6 +429,7 @@ export async function deleteTransaction(id: string): Promise<void> {
   }
 
   await resolveProvisionShortfall(transaction.account_id, userId, supabase)
+  await invalidateMoneyCache(userId)
 }
 
 export async function updateTransaction(id: string, updateData: Partial<NewTransaction>): Promise<Transaction> {
@@ -457,6 +497,7 @@ export async function updateTransaction(id: string, updateData: Partial<NewTrans
     await resolveProvisionShortfall(newTx.account_id, userId, supabase)
   }
 
+  await invalidateMoneyCache(userId)
   return newTx
 }
 
@@ -532,6 +573,11 @@ export async function processRecurringTransactions(): Promise<void> {
 export async function getTransactionCategories(): Promise<TransactionCategory[]> {
   const supabase = await createClient()
   const userId = await getUserId()
+
+  const cacheKey = `categories:${userId}`
+  const cached = await redis.get<TransactionCategory[]>(cacheKey)
+  if (cached) return cached
+
   const { data, error } = await supabase
     .from('transaction_categories')
     .select('*')
@@ -539,6 +585,8 @@ export async function getTransactionCategories(): Promise<TransactionCategory[]>
     .order('name', { ascending: true })
 
   if (error) throw new Error(error.message)
+
+  await redis.set(cacheKey, data, { ex: 3600 })
   return data
 }
 
@@ -552,6 +600,7 @@ export async function addTransactionCategory(categoryData: NewTransactionCategor
     .single()
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
   return data
 }
 
@@ -565,6 +614,7 @@ export async function deleteTransactionCategory(id: string): Promise<void> {
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
 }
 
 // ============================================================================
@@ -574,12 +624,19 @@ export async function deleteTransactionCategory(id: string): Promise<void> {
 export async function getGoals(): Promise<Goal[]> {
   const supabase = await createClient()
   const userId = await getUserId()
+
+  const cacheKey = `goals:${userId}`
+  const cached = await redis.get<Goal[]>(cacheKey)
+  if (cached) return cached
+
   const { data, error } = await supabase
     .from('goals')
     .select('*')
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+
+  await redis.set(cacheKey, data, { ex: 3600 })
   return data
 }
 
@@ -593,6 +650,7 @@ export async function addGoal(goalData: NewGoal): Promise<Goal> {
     .single()
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
   return data
 }
 
@@ -608,6 +666,7 @@ export async function updateGoal(id: string, updateData: Partial<NewGoal>): Prom
     .single()
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
   return data
 }
 
@@ -681,6 +740,7 @@ export async function provisionToGoal(goalId: string, amount: number, accountId:
     .eq('user_id', userId)
 
   if (updateGoalError) throw new Error(updateGoalError.message)
+  await invalidateMoneyCache(userId)
 }
 
 export async function updateGoalStatus(id: string, status: GoalStatus): Promise<void> {
@@ -693,6 +753,7 @@ export async function updateGoalStatus(id: string, status: GoalStatus): Promise<
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
 }
 
 export async function deleteGoal(id: string): Promise<void> {
@@ -714,6 +775,7 @@ export async function deleteGoal(id: string): Promise<void> {
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
 }
 
 // ============================================================================
@@ -723,6 +785,11 @@ export async function deleteGoal(id: string): Promise<void> {
 export async function getLedger(): Promise<Ledger[]> {
   const supabase = await createClient()
   const userId = await getUserId()
+
+  const cacheKey = `ledger:${userId}`
+  const cached = await redis.get<Ledger[]>(cacheKey)
+  if (cached) return cached
+
   const { data, error } = await supabase
     .from('ledger')
     .select('*')
@@ -730,6 +797,8 @@ export async function getLedger(): Promise<Ledger[]> {
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)
+
+  await redis.set(cacheKey, data, { ex: 3600 })
   return data
 }
 
@@ -743,6 +812,7 @@ export async function addLedgerEntry(entryData: NewLedgerEntry): Promise<Ledger>
     .single()
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
   return data
 }
 
@@ -758,6 +828,7 @@ export async function updateLedgerEntry(id: string, entryData: Partial<NewLedger
     .single()
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
   return data
 }
 
@@ -771,6 +842,7 @@ export async function settleLedgerEntry(id: string): Promise<void> {
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
 }
 
 export async function deleteLedgerEntry(id: string): Promise<void> {
@@ -783,6 +855,7 @@ export async function deleteLedgerEntry(id: string): Promise<void> {
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
 }
 
 // ============================================================================
@@ -792,6 +865,11 @@ export async function deleteLedgerEntry(id: string): Promise<void> {
 export async function getBills(): Promise<Bill[]> {
   const supabase = await createClient()
   const userId = await getUserId()
+
+  const cacheKey = `bills:${userId}`
+  const cached = await redis.get<Bill[]>(cacheKey)
+  if (cached) return cached
+
   const { data, error } = await supabase
     .from('bills')
     .select('*')
@@ -800,6 +878,8 @@ export async function getBills(): Promise<Bill[]> {
     .order('next_due_date', { ascending: true })
 
   if (error) throw new Error(error.message)
+
+  await redis.set(cacheKey, data, { ex: 3600 })
   return data
 }
 
@@ -813,6 +893,7 @@ export async function addBill(billData: NewBill): Promise<Bill> {
     .single()
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
   return data
 }
 
@@ -828,6 +909,7 @@ export async function updateBill(id: string, updateData: Partial<NewBill>): Prom
     .single()
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
   return data
 }
 
@@ -841,6 +923,7 @@ export async function deleteBill(id: string): Promise<void> {
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
 }
 
 export async function markBillPaid(id: string): Promise<void> {
@@ -888,6 +971,7 @@ export async function markBillPaid(id: string): Promise<void> {
     .eq('user_id', userId)
 
   if (updateError) throw new Error(updateError.message)
+  await invalidateMoneyCache(userId)
 }
 
 export async function toggleBillActive(id: string, isActive: boolean): Promise<void> {
@@ -900,6 +984,7 @@ export async function toggleBillActive(id: string, isActive: boolean): Promise<v
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
 }
 
 // ============================================================================
@@ -909,6 +994,11 @@ export async function toggleBillActive(id: string, isActive: boolean): Promise<v
 export async function getReminders(): Promise<Reminder[]> {
   const supabase = await createClient()
   const userId = await getUserId()
+
+  const cacheKey = `reminders:${userId}`
+  const cached = await redis.get<Reminder[]>(cacheKey)
+  if (cached) return cached
+
   const { data, error } = await supabase
     .from('reminders')
     .select('*')
@@ -916,6 +1006,8 @@ export async function getReminders(): Promise<Reminder[]> {
     .order('remind_on', { ascending: true })
 
   if (error) throw new Error(error.message)
+
+  await redis.set(cacheKey, data, { ex: 3600 })
   return data
 }
 
@@ -929,6 +1021,7 @@ export async function addReminder(reminderData: NewReminder): Promise<Reminder> 
     .single()
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
   return data
 }
 
@@ -942,6 +1035,7 @@ export async function markReminderDone(id: string): Promise<void> {
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+  await invalidateMoneyCache(userId)
 }
 
 // ============================================================================

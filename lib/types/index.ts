@@ -11,6 +11,8 @@ export type Todo = Database['public']['Tables']['todos']['Row']
 export type Habit = Database['public']['Tables']['habits']['Row']
 export type HabitLog = Database['public']['Tables']['habit_logs']['Row']
 export type Event = Database['public']['Tables']['events']['Row']
+export type Project = Database['public']['Tables']['projects']['Row']
+export type ProjectTask = Database['public']['Tables']['project_tasks']['Row']
 
 // Temporarily defining this manually until Supabase types are regenerated after the table is created
 export type TransactionCategory = {
@@ -32,6 +34,8 @@ export type GoalPeriod = 'weekly' | 'monthly' | 'quarterly' | 'long_term_custom'
 export type Priority = 'low' | 'medium' | 'high'
 export type Section = 'general' | 'money' | 'work' | 'habits'
 export type BillFrequency = 'monthly' | 'weekly' | 'yearly' | 'once'
+export type ProjectStatus = 'active' | 'completed' | 'archived'
+export type TaskStatus = 'todo' | 'in_progress' | 'done'
 
 // Money-specific utility types
 export type NewAccount = Omit<Account, 'id' | 'created_at'>
@@ -41,6 +45,10 @@ export type NewLedgerEntry = Omit<Ledger, 'id' | 'created_at'>
 export type NewBill = Omit<Bill, 'id' | 'created_at'>
 export type NewReminder = Omit<Reminder, 'id' | 'created_at'>
 export type NewTransactionCategory = Omit<TransactionCategory, 'id' | 'created_at' | 'user_id'>
+
+// Work utility types
+export type NewProject = Omit<Project, 'id' | 'created_at' | 'updated_at'>
+export type NewProjectTask = Omit<ProjectTask, 'id' | 'created_at' | 'updated_at'>
 
 export type TransactionFilters = {
   accountId?: string
