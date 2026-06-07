@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { X, Pin, Hash } from 'lucide-react'
 import type { Note } from '@/lib/types'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
@@ -20,20 +20,21 @@ export function NoteDialog({ open, onOpenChange, note, onSave }: NoteDialogProps
   const [isPinned, setIsPinned] = useState(false)
 
   // Reset form when note changes
-  const prevNoteId = useState<string | null>(null)
-  if (open && note?.id !== prevNoteId[0]) {
-    prevNoteId[1](note?.id ?? null)
-    setTitle(note?.title ?? '')
-    setContent(note?.content ?? '')
-    setTags(note?.tags ?? [])
-    setIsPinned(note?.is_pinned ?? false)
-  } else if (open && !note && prevNoteId[0] !== '__new__') {
-    prevNoteId[1]('__new__')
-    setTitle('')
-    setContent('')
-    setTags([])
-    setIsPinned(false)
-  }
+  useEffect(() => {
+    if (open) {
+      if (note) {
+        setTitle(note.title ?? '')
+        setContent(note.content ?? '')
+        setTags(note.tags ?? [])
+        setIsPinned(note.is_pinned ?? false)
+      } else {
+        setTitle('')
+        setContent('')
+        setTags([])
+        setIsPinned(false)
+      }
+    }
+  }, [open, note])
 
   const handleSave = useCallback(() => {
     if (!title.trim() && !content.trim()) return

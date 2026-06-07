@@ -40,7 +40,7 @@ export default function ProjectsPage() {
     return projects.filter(p => p.status === filter)
   }, [projects, filter])
 
-  const handleSave = async (data: { name: string; description: string; color: string; priority: string; due_date: string | null; status: string }) => {
+  const handleSave = async (data: { name: string; description: string; notes: string; color: string; priority: string; due_date: string | null; status: string }) => {
     try {
       if (editingProject) {
         const updated = await updateProject(editingProject.id, data)
@@ -151,6 +151,7 @@ export default function ProjectsPage() {
         project={editingProject ? {
           name: editingProject.name,
           description: editingProject.description || '',
+          notes: editingProject.notes || '',
           color: editingProject.color || '#000000',
           priority: editingProject.priority || 'medium',
           due_date: editingProject.due_date || '',

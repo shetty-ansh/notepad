@@ -6,8 +6,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 interface ProjectDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  project: { name: string; description: string; color: string; priority: string; due_date: string; status: string } | null
-  onSave: (data: { name: string; description: string; color: string; priority: string; due_date: string | null; status: string }) => void
+  project: { name: string; description: string; notes: string; color: string; priority: string; due_date: string; status: string } | null
+  onSave: (data: { name: string; description: string; notes: string; color: string; priority: string; due_date: string | null; status: string }) => void
 }
 
 const COLORS = ['#000000', '#6366f1', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4']
@@ -15,6 +15,7 @@ const COLORS = ['#000000', '#6366f1', '#ec4899', '#f59e0b', '#10b981', '#ef4444'
 export function ProjectDialog({ open, onOpenChange, project, onSave }: ProjectDialogProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [notes, setNotes] = useState('')
   const [color, setColor] = useState('#000000')
   const [priority, setPriority] = useState('medium')
   const [dueDate, setDueDate] = useState('')
@@ -24,6 +25,7 @@ export function ProjectDialog({ open, onOpenChange, project, onSave }: ProjectDi
     if (open) {
       setName(project?.name ?? '')
       setDescription(project?.description ?? '')
+      setNotes(project?.notes ?? '')
       setColor(project?.color ?? '#000000')
       setPriority(project?.priority ?? 'medium')
       setDueDate(project?.due_date ?? '')
@@ -36,6 +38,7 @@ export function ProjectDialog({ open, onOpenChange, project, onSave }: ProjectDi
     onSave({
       name: name.trim(),
       description: description.trim(),
+      notes: notes.trim(),
       color,
       priority,
       due_date: dueDate || null,
@@ -74,6 +77,13 @@ export function ProjectDialog({ open, onOpenChange, project, onSave }: ProjectDi
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Description (optional)"
             className="w-full min-h-[60px] text-sm text-black/60 placeholder:text-black/20 outline-none bg-transparent resize-none"
+          />
+
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Notes (optional)"
+            className="w-full min-h-[100px] text-sm text-black/60 placeholder:text-black/20 outline-none bg-transparent resize-none border border-black/10 rounded-md p-2"
           />
 
           {/* Color picker */}

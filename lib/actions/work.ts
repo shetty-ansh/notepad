@@ -45,6 +45,7 @@ export async function getProject(id: string): Promise<Project> {
 type ProjectInput = {
   name: string
   description?: string | null
+  notes?: string | null
   color?: string | null
   status?: string | null
   priority?: string | null

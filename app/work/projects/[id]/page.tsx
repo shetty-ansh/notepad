@@ -90,7 +90,7 @@ export default function ProjectDetailPage() {
     }
   }
 
-  const handleSaveProject = async (data: { name: string; description: string; color: string; priority: string; due_date: string | null; status: string }) => {
+  const handleSaveProject = async (data: { name: string; description: string; notes: string; color: string; priority: string; due_date: string | null; status: string }) => {
     try {
       const updated = await updateProject(projectId, data)
       setProject(updated)
@@ -153,6 +153,12 @@ export default function ProjectDetailPage() {
                 <p className="text-sm text-black/50 leading-relaxed max-w-xl pl-5.5">
                   {project.description}
                 </p>
+              )}
+              {project.notes && (
+                <div className="pl-5.5 pt-2 max-w-xl">
+                  <p className="text-xs font-semibold text-black/40 mb-1 uppercase tracking-wider">Notes</p>
+                  <p className="text-sm text-black/70 leading-relaxed whitespace-pre-wrap">{project.notes}</p>
+                </div>
               )}
             </div>
             <button
@@ -282,6 +288,7 @@ export default function ProjectDetailPage() {
         project={{
           name: project.name,
           description: project.description || '',
+          notes: project.notes || '',
           color: project.color || '#000000',
           priority: project.priority || 'medium',
           due_date: project.due_date || '',
