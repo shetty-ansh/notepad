@@ -3,17 +3,18 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { Habit, HabitLog } from '@/lib/types'
+import { revalidatePath } from 'next/cache'
 
-// AUTH DISABLED FOR NOW
-// const getUserId = cache(async (): Promise<string> => {
-//   const supabase = await createClient()
-//   const {
-//     data: { user },
-//     error,
-//   } = await supabase.auth.getUser()
-//   if (error || !user) throw new Error('Not authenticated')
-//   return user.id
-// })
+AUTH DISABLED FOR NOW
+const getUserId = cache(async (): Promise<string> => {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+  if (error || !user) throw new Error('Not authenticated')
+  return user.id
+})
 const getUserId = cache(async (): Promise<string> => {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -57,6 +58,7 @@ export async function createHabit(payload: HabitInput): Promise<Habit> {
     .single()
 
   if (error) throw new Error(error.message)
+  revalidatePath('/', 'layout')
   return data
 }
 
@@ -73,6 +75,7 @@ export async function updateHabit(id: string, payload: Partial<HabitInput>): Pro
     .single()
 
   if (error) throw new Error(error.message)
+  revalidatePath('/', 'layout')
   return data
 }
 
@@ -93,6 +96,7 @@ export async function deleteHabit(id: string): Promise<void> {
   // Hard delete (if you prefer soft delete, update is_active instead)
   const { error } = await supabase.from('habits').delete().eq('id', id)
   if (error) throw new Error(error.message)
+  revalidatePath('/', 'layout')
 }
 
 // Logs
@@ -148,6 +152,7 @@ export async function toggleHabitLog(
       .select('*')
       .single()
     if (error) throw new Error(error.message)
+    revalidatePath('/', 'layout')
     return data
   } else {
     const { data, error } = await supabase
@@ -161,6 +166,7 @@ export async function toggleHabitLog(
       .select('*')
       .single()
     if (error) throw new Error(error.message)
+    revalidatePath('/', 'layout')
     return data
   }
 }

@@ -44,88 +44,88 @@ export function GoalCard({ goal, transactions = [], accounts = [], onProvision, 
 
   return (
     <>
-    <div
-      onClick={() => setModalOpen(true)}
-      className={`border border-grey-900 border-2 rounded-[6px] p-4 cursor-pointer hover:shadow-md transition-all ${timeBg}`}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <h3 className="text-base md:text-2xl font-bold text-black truncate">
-            {formatText(goal.name || "")}
-          </h3>
+      <div
+        onClick={() => setModalOpen(true)}
+        className={`border border-grey-900 border-2 rounded-[6px] bg-gray-100 p-4 cursor-pointer hover:shadow-md transition-all ${timeBg}`}
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base md:text-2xl font-bold text-black truncate">
+              {formatText(goal.name || "")}
+            </h3>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-2">
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit()
+                }}
+                className="text-black hover:text-white hover:bg-black p-2 rounded-full"
+                title="Edit"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete()
+                }}
+                className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-full"
+                title="Delete"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-1 sm:gap-2">
-          {onEdit && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation()
-                onEdit()
-              }}
-              className="text-black hover:text-white hover:bg-black p-2 rounded-full"
-              title="Edit"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-            </Button>
+
+        <div className="mb-3">
+          <div className="h-4 bg-gray-200 rounded-[6px] overflow-hidden">
+            <div
+              className="h-full bg-[#1AB394] rounded-[6px] transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-between mb-1">
+          <div className='flex justify-center items-center gap-1'>
+            <span className="text-sm md:text-lg font-mono font-semibold">
+              ₹
+              {(goal.saved_amount || 0).toLocaleString('en-IN')}
+            </span>
+            <span className="text-xs md:text-sm">
+              of ₹
+              {(goal.target_amount || 0).toLocaleString('en-IN')}
+            </span>
+          </div>
+
+          {goal.target_date && (
+            <p className="text-sm text-black font-mono p-0 m-0">
+              By: {formatDate(goal.target_date)}
+            </p>
           )}
-          {onDelete && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete()
-              }}
-              className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-full"
-              title="Delete"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="mb-3">
-        <div className="h-4 bg-gray-200 rounded-[6px] overflow-hidden">
-          <div
-            className="h-full bg-[#1AB394] rounded-[6px] transition-all"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-between mb-1">
-        <div className='flex justify-center items-center gap-1'>
-          <span className="text-sm md:text-lg font-mono font-semibold">
-            ₹
-            {(goal.saved_amount || 0).toLocaleString('en-IN')}
-          </span>
-          <span className="text-xs md:text-sm">
-            of ₹
-            {(goal.target_amount || 0).toLocaleString('en-IN')}
-          </span>
         </div>
 
-        {goal.target_date && (
-          <p className="text-sm text-black font-mono p-0 m-0">
-            By: {formatDate(goal.target_date)}
-          </p>
+        {goal.status === 'active' && (
+          <Button
+            onClick={(e) => {
+              e.stopPropagation()
+              onProvision()
+            }}
+            className="w-full bg-black text-white hover:bg-green-900 h-8 text-sm font-medium rounded-[8px] shadow-none"
+          >
+            Add Money
+          </Button>
         )}
       </div>
-
-      {goal.status === 'active' && (
-        <Button
-          onClick={(e) => {
-            e.stopPropagation()
-            onProvision()
-          }}
-          className="w-full bg-black text-white hover:bg-green-900 h-8 text-sm font-medium rounded-[8px] shadow-none"
-        >
-          Add Money
-        </Button>
-      )}
-    </div>
 
       {modalOpen && (
         <div
@@ -145,7 +145,7 @@ export function GoalCard({ goal, transactions = [], accounts = [], onProvision, 
                 <X size={14} />
               </button>
               <h3 className="text-xl font-bold text-black pr-10">{formatText(goal.name || "")}</h3>
-              
+
               <div className="mt-4 h-4 bg-gray-200/50 rounded-[6px] overflow-hidden backdrop-blur-sm">
                 <div
                   className="h-full bg-[#1AB394] rounded-[6px] transition-all"

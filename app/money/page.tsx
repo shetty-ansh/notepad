@@ -237,6 +237,12 @@ export default function MoneyOverviewPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      <div>
+        <h1 className="text-4xl sm:text-7xl font-bold">Money</h1>
+        <p className="text-sm sm:text-base text-gray-600 mt-2">
+          Handle your finances, better
+        </p>
+      </div>
       {/* Summary Bar — Desktop: 3 cards, Mobile: single compact card */}
       {/* Desktop */}
       <div className="hidden md:grid grid-cols-3 gap-4">

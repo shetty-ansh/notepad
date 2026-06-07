@@ -1,4 +1,12 @@
 'use client'
+import {
+  CheckCircle2,
+  CircleX,
+  TriangleAlert,
+  CircleHelp,
+  Trash2,
+  Loader2,
+} from "lucide-react";
 
 interface CustomToastProps {
   type:
@@ -13,15 +21,6 @@ interface CustomToastProps {
   onConfirm?: () => void;
   onCancel?: () => void;
 }
-
-const iconMap = {
-  success: "check_circle",
-  error: "cancel",
-  warning: "warning",
-  confirm: "help",
-  confirmDelete: "delete",
-  processing: "sync",
-};
 
 const colorMap = {
   success: "text-[#1AB394]",
@@ -40,16 +39,20 @@ export function CustomToast({
   onCancel,
 }: CustomToastProps) {
   const showConfirmButtons = type === "confirm" || type === "confirmDelete";
+  const iconClassName = `${colorMap[type]} size-6 flex-shrink-0 ${type === "processing" ? "animate-spin" : ""}`;
+
+  const iconMap = {
+    success: <CheckCircle2 className={iconClassName} />,
+    error: <CircleX className={iconClassName} />,
+    warning: <TriangleAlert className={iconClassName} />,
+    confirm: <CircleHelp className={iconClassName} />,
+    confirmDelete: <Trash2 className={iconClassName} />,
+    processing: <Loader2 className={iconClassName} />,
+  };
 
   return (
     <div className="flex items-center gap-3 p-4 rounded-lg bg-white border-0 w-[360px] shadow-[0_4px_12px_rgba(13,23,23,0.15)]">
-      <span
-        className={`material-symbols-rounded ${colorMap[type]} text-[24px] leading-none flex items-center justify-center flex-shrink-0 ${type === "processing" ? "animate-spin" : ""
-          }`}
-        style={{ fontVariationSettings: '"FILL" 1' }}
-      >
-        {iconMap[type]}
-      </span>
+      {iconMap[type]}
 
       <div className="flex flex-col flex-1 gap-2">
         <div className="space-y-0.5">

@@ -7,7 +7,7 @@ import { AppShell } from '@/components/layout/app-shell'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'My App',
+  title: 'Orbit — all your systems in motion',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

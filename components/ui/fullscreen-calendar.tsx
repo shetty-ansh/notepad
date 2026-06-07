@@ -42,6 +42,7 @@ interface CalendarData {
 
 interface FullScreenCalendarProps {
   data: CalendarData[]
+  onDateClick?: (date: Date) => void
 }
 
 const colStartClasses = [
@@ -54,7 +55,7 @@ const colStartClasses = [
   "col-start-7",
 ]
 
-export function FullScreenCalendar({ data }: FullScreenCalendarProps) {
+export function FullScreenCalendar({ data, onDateClick }: FullScreenCalendarProps) {
   const today = startOfToday()
   const [selectedDay, setSelectedDay] = React.useState(today)
   const [currentMonth, setCurrentMonth] = React.useState(
@@ -164,7 +165,10 @@ export function FullScreenCalendar({ data }: FullScreenCalendarProps) {
             {days.map((day, dayIdx) =>
               !isDesktop ? (
                 <button
-                  onClick={() => setSelectedDay(day)}
+                  onClick={() => {
+                    setSelectedDay(day)
+                    onDateClick?.(day)
+                  }}
                   key={dayIdx}
                   type="button"
                   className={cn(
@@ -220,7 +224,10 @@ export function FullScreenCalendar({ data }: FullScreenCalendarProps) {
               ) : (
                 <div
                   key={dayIdx}
-                  onClick={() => setSelectedDay(day)}
+                  onClick={() => {
+                    setSelectedDay(day)
+                    onDateClick?.(day)
+                  }}
                   className={cn(
                     dayIdx === 0 && colStartClasses[getDay(day)],
                     !isEqual(day, selectedDay) &&
@@ -268,12 +275,12 @@ export function FullScreenCalendar({ data }: FullScreenCalendarProps) {
                           {day.events.slice(0, 1).map((event) => (
                             <div
                               key={event.id}
-                              className="flex flex-col items-start gap-1 rounded-lg border bg-muted/50 p-2 text-xs leading-tight"
+                              className="flex flex-col items-start gap-1 rounded-lg border bg-muted/50 p-1.5 text-xs leading-tight overflow-hidden"
                             >
-                              <p className="font-medium leading-none">
+                              <p className="font-medium leading-none truncate w-full">
                                 {event.name}
                               </p>
-                              <p className="leading-none text-muted-foreground">
+                              <p className="leading-none text-muted-foreground truncate w-full">
                                 {event.time}
                               </p>
                             </div>
@@ -294,7 +301,10 @@ export function FullScreenCalendar({ data }: FullScreenCalendarProps) {
           <div className="isolate grid w-full grid-cols-7 grid-rows-5 border-x lg:hidden">
             {days.map((day, dayIdx) => (
               <button
-                onClick={() => setSelectedDay(day)}
+                onClick={() => {
+                  setSelectedDay(day)
+                  onDateClick?.(day)
+                }}
                 key={dayIdx}
                 type="button"
                 className={cn(
